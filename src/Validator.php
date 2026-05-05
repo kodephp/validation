@@ -15,6 +15,7 @@ use Kode\Validation\Rule\BetweenRule;
 use Kode\Validation\Rule\BooleanRule;
 use Kode\Validation\Rule\ChineseAlphaNumRule;
 use Kode\Validation\Rule\ChineseRule;
+use Kode\Validation\Rule\ClosureRule;
 use Kode\Validation\Rule\ConfirmedRule;
 use Kode\Validation\Rule\DateRule;
 use Kode\Validation\Rule\DeclinedRule;
@@ -39,6 +40,7 @@ use Kode\Validation\Rule\LteRule;
 use Kode\Validation\Rule\MaxRule;
 use Kode\Validation\Rule\MinRule;
 use Kode\Validation\Rule\NumericRule;
+use Kode\Validation\Rule\PrefixMixedRule;
 use Kode\Validation\Rule\ProhibitedIfRule;
 use Kode\Validation\Rule\ProhibitedRule;
 use Kode\Validation\Rule\PureDigitsRule;
@@ -80,7 +82,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const VERSION = '1.5.0';
+    public const VERSION = '1.6.0';
 
     /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例
@@ -233,13 +235,11 @@ class Validator implements ValidatorInterface
                 ) {
                 }
 
-                #[\Override]
                 public function validate(string $field, mixed $value, array $params, array $data): ?string
                 {
                     return ($this->callback)($field, $value, $params, $data);
                 }
 
-                #[\Override]
                 public function getName(): string
                 {
                     return $this->name;
@@ -467,6 +467,10 @@ class Validator implements ValidatorInterface
             new StartWithEnglishRule(),
             new ChineseAlphaNumRule(),
             new UsernameRule(),
+            new PrefixMixedRule(),
+            new ClosureRule(function () {
+                return null;
+            }),
         ];
 
         foreach ($builtinRules as $rule) {
@@ -486,13 +490,11 @@ class Validator implements ValidatorInterface
         $this->rules[$name] = new class($name) implements RuleInterface {
             public function __construct(private string $name) {}
 
-            #[\Override]
             public function validate(string $field, mixed $value, array $params, array $data): ?string
             {
                 return null;
             }
 
-            #[\Override]
             public function getName(): string
             {
                 return $this->name;
@@ -502,6 +504,10 @@ class Validator implements ValidatorInterface
 
     /**
      * 解析规则定义
+     *
+     * @param array|string $ruleSet 规则定义，支持：
+     *   - 字符串格式：'required|email|min:2'
+     *   - 数组格式：['required', 'email', new SomeRule(), fn(...) => 'error']
      */
     private function parseRules(array|string $ruleSet): array
     {
@@ -516,6 +522,12 @@ class Validator implements ValidatorInterface
                         $this->rules[$name] = $item;
                     }
                     $ruleStrings[] = $name;
+                } elseif ($item instanceof \Closure) {
+                    $closureRule = new ClosureRule($item);
+                    $name = $closureRule->getName();
+                    $tempName = $name . '_' . spl_object_id($item);
+                    $this->rules[$tempName] = $closureRule;
+                    $ruleStrings[] = $tempName;
                 } else {
                     $ruleStrings[] = (string) $item;
                 }

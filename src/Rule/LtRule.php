@@ -11,7 +11,6 @@ namespace Kode\Validation\Rule;
  */
 class LtRule implements RuleInterface
 {
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -34,7 +33,6 @@ class LtRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'lt';

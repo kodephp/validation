@@ -6,16 +6,15 @@
 
 - **协程安全**：所有验证过程使用局部变量，多 Fiber 并发互不干扰
 - **管道规则**：`required|email|min:5|max:100` 直观的规则表达式
-- **8+ 内置规则**：覆盖必填、类型、格式、范围、比较等常见场景
-- **自定义规则**：闭包或类均可注册，灵活扩展
+- **50+ 内置规则**：覆盖中英文、特殊字符、用户名、类型、格式、范围、比较等全场景
+- **闭包自定义规则**：支持内联闭包和 `addRule()` 动态注册
 - **中文错误消息**：默认中文模板，完整的字段别名和占位符支持
 - **只读结果对象**：不可变设计，安全传递
-- **10 级数据流管道**：面向 HLS FPGA 综合的流水线架构
+- **多框架集成**：Trait / Helper / Validator 三种方式适配任何框架
 
 ## 环境要求
 
 - PHP >= 8.2
-- [kode/context](https://github.com/kodephp/context) ^1.0（协程上下文）
 
 ## 安装
 
@@ -32,7 +31,6 @@ declare(strict_types=1);
 
 use Kode\Validation\Validator;
 
-// 使用默认中文消息模板
 $validator = new Validator(require 'vendor/kode/validation/config/validation.php');
 
 $data = [
@@ -51,88 +49,206 @@ $result = $validator->validate($data, $rules);
 
 if ($result->isValid()) {
     $safeData = $result->validatedData();
-    // 使用 $safeData 进行后续操作
 } else {
-    $errors = $result->errors();
-    print_r($errors);
-    // 输出：['name' => ['required' => 'name 不能为空'], ...]
+    print_r($result->errors());
 }
 ```
 
-## 内置规则
+## 内置规则速查（50 条）
 
+### 基础验证
 | 规则 | 格式 | 说明 |
 |------|------|------|
-| `required` | `required` | 字段必填，null/空字符串/空数组不通过 |
-| `email` | `email` | 邮箱格式（基于 `filter_var`） |
-| `min` | `min:值` | 最小值，数字直接比较，字符串按 `mb_strlen` |
-| `max` | `max:值` | 最大值，同上 |
-| `between` | `between:最小值,最大值` | 区间范围，含边界 |
-| `in` | `in:值1,值2,值3` | 枚举值，严格类型比较 |
-| `regex` | `regex:/正则/` | 正则表达式匹配 |
-| `confirmed` | `confirmed` | 确认字段，需同名 `_confirmation` 后缀字段 |
+| `required` | `required` | 必填（null/''/[] 不通过） |
+| `sometimes` | `sometimes` | 字段存在时才验证 |
+| `nullable` | `nullable` | 为 null 时跳过 |
 
-### 规则详解
+### 类型验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `string` | `string` | 字符串类型 |
+| `integer` | `integer` | 整数类型 |
+| `float` | `float` | 浮点类型 |
+| `numeric` | `numeric` | 数字（整型/浮点/数字串） |
+| `boolean` | `boolean` | 布尔类型 |
+| `array` | `array` | 数组类型 |
+| `json` | `json` | JSON 格式 |
 
-#### required - 必填验证
+### 范围与枚举
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `min` | `min:值` | 最小值，字符串按 `mb_strlen`（1中文=1长度） |
+| `max` | `max:值` | 最大值 |
+| `between` | `between:最小值,最大值` | 区间范围（含边界） |
+| `size` | `size:值` | 精确等于 |
+| `in` | `in:值1,值2,值3` | 枚举值（严格类型比较） |
+
+### 格式验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `email` | `email` | 邮箱格式 |
+| `url` | `url` | URL 地址 |
+| `ip` | `ip` | IPv4/IPv6 |
+| `regex` | `regex:/正则/` | 正则表达式 |
+| `date` | `date` 或 `date:Y-m-d` | 日期格式 |
+| `digits` | `digits:位数` | 精确数字位数 |
+| `digits_between` | `digits_between:最小,最大` | 数字位数区间 |
+
+### 内容验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `alpha` | `alpha` | 纯字母 |
+| `alpha_num` | `alpha_num` | 字母+数字 |
+| `distinct` | `distinct` | 数组值不重复 |
+| `starts_with` | `starts_with:前缀` | 以某值开头 |
+| `ends_with` | `ends_with:后缀` | 以某值结尾 |
+
+### 中英文与字符验证
+| 规则 | 格式 | 说明 | 示例 |
+|------|------|------|------|
+| `chinese` | `chinese` | 包含中文字符 | `张三` ✓ |
+| `english` | `english` | 纯英文字母 | `Hello` ✓ |
+| `pure_digits` | `pure_digits` | 纯数字 | `12345` ✓ |
+| `special_chars` | `special_chars` 或 `special_chars:字符集` | 包含特殊字符 | `abc@123` ✓ |
+| `start_with_english` | `start_with_english` | 英文字母开头 | `user001` ✓ |
+| `chinese_alpha_num` | `chinese_alpha_num` | 中文+英文+数字 | `张三Hello123` ✓ |
+| `username` | `username` | 用户名格式：英文开头+字母数字下划线 | `admin_01` ✓ |
+| `prefix_mixed` | `prefix_mixed:前缀长度` | 前N位英文+后缀字母数字混合 | `AB123` (prefix_mixed:2) ✓ |
+
+### 关系与比较
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `confirmed` | `confirmed` | 确认字段（需 `_confirmation` 字段） |
+| `same` | `same:字段名` | 与某字段相同 |
+| `different` | `different:字段名` | 与某字段不同 |
+| `gt` | `gt:字段名` | 大于某字段 |
+| `gte` | `gte:字段名` | 大于等于某字段 |
+| `lt` | `lt:字段名` | 小于某字段 |
+| `lte` | `lte:字段名` | 小于等于某字段 |
+| `after` | `after:日期/字段` | 晚于某日期 |
+| `before` | `before:日期/字段` | 早于某日期 |
+
+### 接受/禁止
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `accepted` | `accepted` | 必须接受（yes/on/1/true） |
+| `declined` | `declined` | 必须拒绝（no/off/0/false） |
+| `prohibited` | `prohibited` | 禁止存在 |
+| `prohibited_if` | `prohibited_if:字段,值` | 条件下禁止 |
+
+### 条件必填与排除
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `required_if` | `required_if:字段,值` | 某字段为某值时必填 |
+| `required_unless` | `required_unless:字段,值` | 某字段不为某值时必填 |
+| `required_with` | `required_with:字段` | 某字段存在时必填 |
+| `exclude_if` | `exclude_if:字段,值` | 条件下排除字段 |
+| `exclude_unless` | `exclude_unless:字段,值` | 条件不满足时排除字段 |
+
+## 规则详解
+
+### min / max — 中文长度正确计算
+
+`min` 和 `max` 对字符串使用 `mb_strlen()` 计算长度，**1 个中文字符 = 1 个长度**：
 
 ```php
-['name' => 'required']
+['name' => 'required|chinese|min:2']
+// '张三'  → mb_strlen = 2 → 通过
+// '张'    → mb_strlen = 1 → 失败
 
-// 以下视为空：
-null    → 不通过
-''      → 不通过
-[]      → 不通过
-0       → 通过（数字零不是空）
-'0'     → 通过
-false   → 通过
+['name' => 'required|max:3']
+// '张三李' → mb_strlen = 3 → 通过
+// '张三李王' → mb_strlen = 4 → 失败
 ```
 
-#### email - 邮箱验证
+### prefix_mixed — 前缀英文+后缀混合
 
 ```php
-['email' => 'email']
-
-// 空值跳过，如需必填请组合 required：
-['email' => 'required|email']
+['code' => 'prefix_mixed:2']
+// 'AB123'    → 前2位英文+后缀数字 → 通过
+// 'ABCxyz'   → 前2位英文+后缀字母 → 通过
+// '1AB123'   → 前2位不是英文 → 失败
+// 'AB123@'   → 后缀含特殊字符 → 失败
 ```
 
-#### min / max - 最小最大值
+### special_chars — 特殊字符验证
 
 ```php
-['age' => 'min:18']           // 数字 ≥ 18
-['name' => 'min:2']           // 字符串长度 ≥ 2（mb_strlen）
-['score' => 'max:100']        // 数字 ≤ 100
-['title' => 'max:50']         // 字符串长度 ≤ 50
+['password' => 'special_chars']
+// 默认检查: !@#$%^&*()-_=+[]{}|;:'",.<>?/\`~
+
+['code' => 'special_chars:#']
+// 只检查是否包含 #
+
+['code' => 'special_chars:@#-']
+// 检查是否包含 @、#、- 之一
 ```
 
-#### between - 区间范围
+### username — 用户名格式
 
 ```php
-['age' => 'between:18,60']    // 18 ≤ age ≤ 60
-['name' => 'between:2,20']    // 2 ≤ 字符长度 ≤ 20
+['username' => 'username']
+// 'admin_01'  → 英文开头+字母数字下划线 → 通过
+// '001user'   → 数字开头 → 失败
+// '_user'     → 下划线开头 → 失败
+// '张三user'  → 中文开头 → 失败
 ```
 
-#### in - 枚举值
+## 自定义规则
+
+### 方式一：内联闭包（数组规则中直接传入）
 
 ```php
-['status' => 'in:active,inactive,pending']
-// 严格类型比较（===），'1' ≠ 1
+$rules = [
+    'email' => [
+        'required',
+        function (string $field, mixed $value, array $params, array $data): ?string {
+            return str_ends_with($value, '@example.com')
+                ? null
+                : '必须是 @example.com 邮箱';
+        },
+    ],
+];
+
+$result = $validator->validate($data, $rules);
 ```
 
-#### regex - 正则匹配
+### 方式二：addRule() 动态注册
 
 ```php
-['phone' => 'regex:/^1[3-9]\d{9}$/']
-['code' => 'regex:/^[A-Z]{2}\d{4}$/']
+$validator->addRule('is_even', function (string $field, mixed $value, array $params, array $data): ?string {
+    if ($value === null || $value === '') {
+        return null; // 跳过空值
+    }
+    return ((int) $value % 2 === 0) ? null : 'must_be_even';
+});
+
+$result = $validator->validate(['num' => 4], ['num' => 'required|is_even']);
 ```
 
-#### confirmed - 确认字段
+### 方式三：自定义规则类
 
 ```php
-// 数据中需存在同名 _confirmation 字段
-$data = ['password' => 'secret', 'password_confirmation' => 'secret'];
-$rules = ['password' => 'confirmed'];
+use Kode\Validation\Rule\RuleInterface;
+
+class CustomRule implements RuleInterface
+{
+    public function validate(string $field, mixed $value, array $params, array $data): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        // 自定义逻辑
+        return null; // 通过，或返回错误消息字符串
+    }
+
+    public function getName(): string
+    {
+        return 'custom';
+    }
+}
+
+$validator->addRule('custom', new CustomRule());
 ```
 
 ## 自定义错误消息
@@ -155,94 +271,59 @@ $messages = [
     'user_email.attribute' => '用户邮箱',
     'user_email.required'  => ':attribute 不能为空',  // 用户邮箱 不能为空
 ];
-
-$rules = ['user_email' => 'required|email'];
 ```
 
 ### 占位符
 
 | 占位符 | 替换为 |
 |--------|--------|
-| `:attribute` | 字段别名或字段原名 |
+| `:attribute` | 字段别名或原名 |
 | `:value` | 字段当前值 |
 | `:param_0` | 规则第 1 个参数 |
 | `:param_1` | 规则第 2 个参数 |
-| `:param_N` | 规则第 N+1 个参数 |
 
-## 自定义规则
+## 规则定义格式
 
-### 闭包方式
-
-```php
-$validator->addRule('is_even', function (string $field, mixed $value, array $params, array $data): ?string {
-    if ($value === null || $value === '') {
-        return null; // 跳过空值
-    }
-    if ((int) $value % 2 !== 0) {
-        return 'is_even'; // 返回规则名作为错误 key
-    }
-    return null; // 通过
-});
-
-$result = $validator->validate(['num' => 4], ['num' => 'is_even']);
-```
-
-### 类方式
-
-```php
-use Kode\Validation\Rule\RuleInterface;
-
-class CustomRule implements RuleInterface
-{
-    public function validate(string $field, mixed $value, array $params, array $data): ?string
-    {
-        // 自定义逻辑
-        return null; // 或返回错误消息
-    }
-
-    public function getName(): string
-    {
-        return 'custom';
-    }
-}
-
-$validator->addRule('custom', new CustomRule());
-```
-
-## 数组格式规则
-
-除管道字符串外，也支持数组格式：
+### 字符串管道
 
 ```php
 $rules = [
-    'name' => ['required', 'min:2', 'max:20'],
-    'email' => ['required', 'email'],
+    'name'  => 'required|min:2|max:20',
+    'email' => 'required|email',
 ];
+```
 
-// 甚至混用规则类实例
+### 数组格式（支持混用闭包和规则实例）
+
+```php
 use Kode\Validation\Rule\RequiredRule;
 use Kode\Validation\Rule\EmailRule;
 
 $rules = [
-    'email' => [new RequiredRule(), new EmailRule()],
+    'name' => ['required', 'min:2', 'max:20'],
+    'email' => [
+        'required',
+        new EmailRule(),
+        function (string $field, mixed $value, array $params, array $data): ?string {
+            return str_ends_with($value, '@example.com') ? null : 'domain_not_allowed';
+        },
+    ],
 ];
 ```
 
 ## 验证结果
 
-`ValidationResult` 是只读对象，提供三个方法：
+`ValidationResult` 是只读对象：
 
 ```php
 $result = $validator->validate($data, $rules);
 
 $result->isValid();        // bool: 全部通过为 true
 $result->errors();         // array: ['字段' => ['规则' => '消息']]
-$result->validatedData();  // array: 仅通过验证的字段数据
+$result->validatedData();  // array: 仅通过验证的字段
 ```
 
 ### 部分验证结果
-
-当多字段验证时，部分字段通过、部分失败：
 
 ```php
 $data = ['name' => '张三', 'email' => 'invalid'];
@@ -252,10 +333,10 @@ $result = $validator->validate($data, $rules);
 
 $result->isValid();  // false
 $result->errors();   // ['email' => ['email' => 'email 不是有效的邮箱地址']]
-$result->validatedData();  // ['name' => '张三']  ← 仅包含通过验证的字段
+$result->validatedData();  // ['name' => '张三']
 ```
 
-## 实际应用示例
+## 实际应用
 
 ### 用户注册
 
@@ -269,9 +350,9 @@ $data = [
 ];
 
 $rules = [
-    'username' => 'required|min:3|max:20|regex:/^[a-zA-Z0-9_]+$/',
+    'username' => 'required|min:3|max:20|username',
     'email'    => 'required|email',
-    'password' => 'required|min:6|max:100|confirmed',
+    'password' => 'required|min:6|confirmed',
     'age'      => 'required|between:18,100',
 ];
 
@@ -279,19 +360,33 @@ $messages = [
     'username.attribute' => '用户名',
     'email.attribute'    => '邮箱',
     'password.attribute' => '密码',
-    'age.attribute'      => '年龄',
-    'username.regex'     => '用户名只能包含字母、数字和下划线',
 ];
 
 $result = $validator->validate($data, $rules, $messages);
+```
 
-if (!$result->isValid()) {
-    foreach ($result->errors() as $field => $fieldErrors) {
-        foreach ($fieldErrors as $rule => $message) {
-            echo "{$field}: {$message}\n";
-        }
-    }
-}
+### 复杂表单验证
+
+```php
+$data = [
+    'name'   => '张三',
+    'age'    => 25,
+    'score'  => 95.5,
+    'tags'   => ['red', 'blue', 'green'],
+    'code'   => 123456,
+    'agree'  => true,
+];
+
+$rules = [
+    'name'  => 'required|string|chinese|min:2',
+    'age'   => 'required|integer|between:1,120',
+    'score' => 'required|float|between:0,100',
+    'tags'  => 'required|array|distinct|size:3',
+    'code'  => 'required|digits:6',
+    'agree' => 'required|accepted',
+];
+
+$result = $validator->validate($data, $rules);
 ```
 
 ### API 请求验证
@@ -316,61 +411,25 @@ function handleCreateUser(array $request): array
 }
 ```
 
-## 协程安全性
+## 协程安全
 
 `Validator` 不持有单次验证的中间状态，所有临时数据均为局部变量。即使多个 Fiber 同时调用 `validate()`，也不会出现数据交叉污染。
 
 ```php
 for ($i = 0; $i < 10; $i++) {
-    $fiber = new Fiber(function () use ($i) {
-        $result = $validator->validate(
+    $fiber = new Fiber(function () use ($validator, $i) {
+        return $validator->validate(
             ['id' => $i],
-            ['id' => 'required']
-        );
-        return $result->isValid();
+            ['id' => 'required|integer']
+        )->isValid();
     });
     $fiber->start();
-    // ... 并发执行
 }
 ```
 
 ## 框架集成
 
-如果使用 `kode/di` 容器，可通过 Bundle 自动注册：
-
-```php
-// Bundle 会自动加载（通过 composer.json extra.kode.bundle 配置）
-// 或手动注册：
-$app->bind(ValidatorInterface::class, Validator::class);
-```
-
-不使用容器时直接实例化即可：
-
-```php
-$validator = new Validator(require 'config/validation.php');
-```
-
-## 自定义默认消息
-
-复制配置文件到你的项目：
-
-```bash
-cp vendor/kode/validation/config/validation.php config/validation.php
-```
-
-修改后传入构造函数：
-
-```php
-$validator = new Validator(require 'config/validation.php');
-```
-
-## 框架集成
-
-支持在 Controller、Model、Service、View 等框架各层中直接使用，无需额外封装。
-
 ### 方式一：ValidatesRequests Trait
-
-将 Trait 引入任何类，即可获得验证能力：
 
 ```php
 use Kode\Validation\Trait\ValidatesRequests;
@@ -384,7 +443,6 @@ class UserController
         $validated = $this->validateThrows($request, [
             'name'  => 'required|min:2|max:20',
             'email' => 'required|email',
-            'role'  => 'required|in:user,admin',
         ]);
         return User::create($validated);
     }
@@ -405,7 +463,7 @@ class UserController
 
 | 方法 | 返回 | 说明 |
 |------|------|------|
-| `validateRequest()` | `ValidationResult` | 返回标准结果对象 |
+| `validateRequest()` | `ValidationResult` | 返回结果对象 |
 | `validateThrows()` | `array` | 失败抛异常，成功返回数据 |
 | `validateWithResult()` | `array` | 返回 `['valid','data','errors']` |
 | `setValidator()` | `void` | 注入自定义验证器 |
@@ -416,7 +474,7 @@ class UserController
 use Kode\Validation\Helper\ValidationHelper;
 
 $result = ValidationHelper::check($data, $rules);
-$data = ValidationHelper::validated($data, $rules); // 失败返回 null
+$data = ValidationHelper::validated($data, $rules);
 ```
 
 ### 方式三：Validator 直接使用
@@ -424,6 +482,12 @@ $data = ValidationHelper::validated($data, $rules); // 失败返回 null
 ```php
 $validator = new Validator(require 'config/validation.php');
 $data = $validator->stopOnFirstFailure()->validateThrows($data, $rules);
+```
+
+### 方式四：DI 容器
+
+```php
+$app->bind(ValidatorInterface::class, Validator::class);
 ```
 
 ## 多进程 / 多线程 / 协程安全
@@ -436,39 +500,15 @@ $data = $validator->stopOnFirstFailure()->validateThrows($data, $rules);
 | Swoole/Swow 协程 | ✅ 安全 | 不依赖全局/静态可变状态 |
 | Trait 复用 | ✅ 安全 | 每次调用独立结果对象 |
 
-```php
-for ($i = 1; $i <= 100; $i++) {
-    $fiber = new Fiber(function () use ($validator, $i) {
-        return $validator->validate(
-            ['id' => $i], ['id' => 'required|integer']
-        )->isValid();
-    });
-    $fiber->start();
-}
-// 100 个协程并发，结果互不干扰
+## 自定义默认消息
+
+```bash
+cp vendor/kode/validation/config/validation.php config/validation.php
 ```
 
-## 完整规则（43 条）
-
-| 规则 | 类型 | 说明 |
-|------|------|------|
-| `required` | 基础 | 必填（null/''/[] 不通过） |
-| `sometimes` | 控制 | 字段存在时才验证 |
-| `nullable` | 控制 | 字段为 null 时跳过 |
-| `confirmed` | 关系 | 需 `_confirmation` 字段匹配 |
-| `accepted` / `declined` | 基础 | 接受/拒绝 |
-| `prohibited` / `prohibited_if` | 禁止 | 字段禁止存在 |
-| `string` / `integer` / `float` / `numeric` / `boolean` / `array` | 类型 | 类型验证 |
-| `min` / `max` / `between` / `size` / `in` | 范围 | 范围/枚举 |
-| `email` / `url` / `ip` / `json` / `regex` | 格式 | 格式验证 |
-| `date` / `after` / `before` | 日期 | 日期与比较 |
-| `alpha` / `alpha_num` / `distinct` | 内容 | 内容验证 |
-| `starts_with` / `ends_with` | 内容 | 前后缀 |
-| `digits` / `digits_between` | 格式 | 数字位数 |
-| `gt` / `gte` / `lt` / `lte` | 比较 | 字段间比较 |
-| `same` / `different` | 关系 | 字段异同 |
-| `required_if` / `required_unless` / `required_with` | 条件 | 条件必填 |
-| `exclude_if` / `exclude_unless` | 条件 | 条件排除 |
+```php
+$validator = new Validator(require 'config/validation.php');
+```
 
 ## 类图
 
@@ -482,8 +522,8 @@ for ($i = 1; $i <= 100; $i++) {
            ▼                              │
 ┌─────────────────────┐                  ▼
 │     Validator       │     ┌──────────────────────────┐
-│  VERSION = '1.4.0'  │────▶│   ValidationResult       │
-│  - 43条内置规则     │     │  (readonly)               │
+│  VERSION = '1.6.0'  │────▶│   ValidationResult       │
+│  - 50条内置规则     │     │  (readonly)               │
 │  + validate()        │     │  - valid: bool           │
 │  + validateThrows()  │     │  - errors: array         │
 │  + stopOnFirstFail() │     │  - validatedData: array  │
@@ -498,10 +538,50 @@ for ($i = 1; $i <= 100; $i++) {
 │  + getName()        │
 └──────────┬──────────┘     ┌──────────────────────────┐
            │                │  Helper\ValidationHelper │
-   43 个规则实现类...       │  + check() (static)      │
+   50 个规则实现类...       │  + check() (static)      │
                             │  + validated() (static)  │
                             └──────────────────────────┘
 ```
+
+## 版本历史
+
+### v1.6.0（当前版本）
+- 新增 `prefix_mixed` 规则：前N位英文+后缀混合
+- 新增 `ClosureRule`：支持内联闭包自定义规则
+- 增强 `parseRules()`：数组规则中可直接传入闭包
+- 修复 `#[\Override]` PHP 8.3 语法，确保 8.2+ 兼容
+- 215 个测试，448 个断言
+
+### v1.5.0
+- 新增 7 条规则：`chinese`、`english`、`pure_digits`、`special_chars`、`start_with_english`、`chinese_alpha_num`、`username`
+- 200 个测试
+
+### v1.4.0
+- 新增 `ValidatesRequests` Trait
+- 新增 `ValidationHelper` 静态 Helper
+- 支持 `validateThrows()` 和 `validateWithResult()`
+- 框架集成能力完善
+
+### v1.3.0
+- 新增 35 条规则，覆盖类型/范围/日期/比较/条件等全场景
+- 新增 `sometimes` / `nullable` 控制规则
+- 新增 `exclude_if` / `exclude_unless` 排除规则
+- 新增前置回调 `beforeValidation()`
+- 通配符支持 `items.*.name`
+
+### v1.2.0
+- 新增 `json`、`array`、`boolean` 类型规则
+- 新增 `starts_with`、`ends_with`、`after`、`before` 规则
+- 新增 `prohibited` / `prohibited_if` 禁止规则
+
+### v1.1.0
+- 新增 `url`、`ip`、`numeric`、`alpha`、`alpha_num`、`date`、`same`、`different` 规则
+- 修复 `isset()` 对 null 值误判问题
+
+### v1.0.0
+- 初始版本：8 条基础规则
+- 协程安全架构设计
+- 管道规则表达式
 
 ## 许可证
 

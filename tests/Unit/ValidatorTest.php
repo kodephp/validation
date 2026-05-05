@@ -1893,7 +1893,7 @@ class ValidatorTest extends TestCase
     public function testVERSION常量存在(): void
     {
         $this->assertTrue(defined(Validator::class . '::VERSION'));
-        $this->assertSame('1.5.0', Validator::VERSION);
+        $this->assertSame('1.6.0', Validator::VERSION);
     }
 
     // ==================== 中文规则 ====================
@@ -2079,6 +2079,180 @@ class ValidatorTest extends TestCase
             ['username' => 'username']
         );
         $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 前缀英文+混合规则 ====================
+
+    public function test前缀英文混合规则2位前缀通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'AB123'],
+            ['code' => 'prefix_mixed:2']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test前缀英文混合规则3位前缀通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'ABC123456'],
+            ['code' => 'prefix_mixed:3']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test前缀英文混合规则数字开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => '1ABC123'],
+            ['code' => 'prefix_mixed:2']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test前缀英文混合规则后缀含特殊字符失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'AB123@'],
+            ['code' => 'prefix_mixed:2']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test前缀英文混合规则仅英文通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'ABC'],
+            ['code' => 'prefix_mixed:2']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test前缀英文混合规则长度不足失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'A'],
+            ['code' => 'prefix_mixed:2']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 闭包自定义规则 ====================
+
+    public function test闭包规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['email' => 'test@example.com'],
+            ['email' => [
+                'required',
+                function (string $field, mixed $value, array $params, array $data): ?string {
+                    return str_ends_with($value, '@example.com') ? null : '必须是 @example.com 邮箱';
+                },
+            ]]
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test闭包规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['email' => 'test@other.com'],
+            ['email' => [
+                'required',
+                function (string $field, mixed $value, array $params, array $data): ?string {
+                    return str_ends_with($value, '@example.com') ? null : '必须是 @example.com 邮箱';
+                },
+            ]]
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function testaddRule动态添加闭包规则(): void
+    {
+        $validator = new Validator(require dirname(__DIR__, 2) . '/config/validation.php');
+        $validator->addRule('is_even', function (string $field, mixed $value, array $params, array $data): ?string {
+            return ((int) $value % 2 === 0) ? null : 'must_be_even';
+        });
+
+        $result = $validator->validate(
+            ['number' => 4],
+            ['number' => 'required|is_even']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testaddRule动态添加闭包规则失败(): void
+    {
+        $validator = new Validator(require dirname(__DIR__, 2) . '/config/validation.php');
+        $validator->addRule('is_even', function (string $field, mixed $value, array $params, array $data): ?string {
+            return ((int) $value % 2 === 0) ? null : 'must_be_even';
+        });
+
+        $result = $validator->validate(
+            ['number' => 3],
+            ['number' => 'required|is_even']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('is_even', $result->errors()['number']);
+        $this->assertSame('must_be_even', $result->errors()['number']['is_even']);
+    }
+
+    public function test多闭包规则同时使用(): void
+    {
+        $result = $this->validator->validate(
+            ['username' => 'admin'],
+            ['username' => [
+                'required',
+                function (string $field, mixed $value, array $params, array $data): ?string {
+                    return !in_array($value, ['admin', 'root', 'system'], true)
+                        ? null
+                        : 'reserved_username';
+                },
+                function (string $field, mixed $value, array $params, array $data): ?string {
+                    return strlen($value) >= 3 ? null : 'too_short';
+                },
+            ]]
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertTrue(in_array('reserved_username', $result->errors()['username']));
+    }
+
+    // ==================== 综合场景：min + 中文 ====================
+
+    public function test中文配合min规则正确计算字符数(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三'],
+            ['name' => 'required|chinese|min:2']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test中文min规则不足2个字符失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张'],
+            ['name' => 'required|chinese|min:2']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test中文max规则超过限制失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三李王赵'],
+            ['name' => 'required|chinese|max:3']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test中文between规则在区间内通过(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三'],
+            ['name' => 'required|chinese|between:2,4']
+        );
+        $this->assertTrue($result->isValid());
     }
 
     // ==================== 综合性 v1.3 场景 ====================

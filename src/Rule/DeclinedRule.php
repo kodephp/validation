@@ -11,7 +11,6 @@ namespace Kode\Validation\Rule;
  */
 class DeclinedRule implements RuleInterface
 {
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         $declined = ['no', 'off', '0', 0, false];
@@ -23,7 +22,6 @@ class DeclinedRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'declined';

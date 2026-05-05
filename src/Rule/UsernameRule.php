@@ -13,7 +13,6 @@ namespace Kode\Validation\Rule;
  */
 class UsernameRule implements RuleInterface
 {
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -27,7 +26,6 @@ class UsernameRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'username';

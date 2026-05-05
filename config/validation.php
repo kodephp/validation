@@ -60,4 +60,6 @@ return [
     'start_with_english' => ':attribute 必须以英文字母开头',
     'chinese_alpha_num'  => ':attribute 只能包含中文、英文和数字',
     'username'        => ':attribute 必须以英文字母开头，后续只能使用字母、数字和下划线',
+    'prefix_mixed'    => ':attribute 前 :param_0 位必须为英文字母，后续只能包含字母和数字',
+    'closure'         => ':attribute 验证失败',
 ];

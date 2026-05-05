@@ -12,7 +12,6 @@ namespace Kode\Validation\Rule;
  */
 class DigitsRule implements RuleInterface
 {
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -32,7 +31,6 @@ class DigitsRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'digits';

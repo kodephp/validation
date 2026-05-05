@@ -12,7 +12,6 @@ namespace Kode\Validation\Rule;
  */
 class ExcludeIfRule implements RuleInterface
 {
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         $otherField = $params[0] ?? '';
@@ -31,7 +30,6 @@ class ExcludeIfRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'exclude_if';

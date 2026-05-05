@@ -19,7 +19,6 @@ class SpecialCharsRule implements RuleInterface
      */
     private const DEFAULT_CHARS = '!@#$%^&*()-_=+[]{}|;:\'",.<>?/\\`~';
 
-    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -38,7 +37,6 @@ class SpecialCharsRule implements RuleInterface
         return null;
     }
 
-    #[\Override]
     public function getName(): string
     {
         return 'special_chars';
