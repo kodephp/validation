@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kode\Validation;
 
 use Kode\Validation\Contract\ValidatorInterface;
+use Kode\Validation\Rule\AcceptedRule;
 use Kode\Validation\Rule\AfterRule;
 use Kode\Validation\Rule\AlnumRule;
 use Kode\Validation\Rule\AlphaRule;
@@ -14,22 +15,39 @@ use Kode\Validation\Rule\BetweenRule;
 use Kode\Validation\Rule\BooleanRule;
 use Kode\Validation\Rule\ConfirmedRule;
 use Kode\Validation\Rule\DateRule;
+use Kode\Validation\Rule\DeclinedRule;
 use Kode\Validation\Rule\DifferentRule;
+use Kode\Validation\Rule\DigitsBetweenRule;
+use Kode\Validation\Rule\DigitsRule;
+use Kode\Validation\Rule\DistinctRule;
 use Kode\Validation\Rule\EmailRule;
 use Kode\Validation\Rule\EndsWithRule;
+use Kode\Validation\Rule\ExcludeIfRule;
+use Kode\Validation\Rule\ExcludeUnlessRule;
+use Kode\Validation\Rule\FloatRule;
+use Kode\Validation\Rule\GtRule;
+use Kode\Validation\Rule\GteRule;
 use Kode\Validation\Rule\InRule;
+use Kode\Validation\Rule\IntegerRule;
 use Kode\Validation\Rule\IpRule;
 use Kode\Validation\Rule\JsonRule;
+use Kode\Validation\Rule\LtRule;
+use Kode\Validation\Rule\LteRule;
 use Kode\Validation\Rule\MaxRule;
 use Kode\Validation\Rule\MinRule;
 use Kode\Validation\Rule\NumericRule;
 use Kode\Validation\Rule\ProhibitedIfRule;
 use Kode\Validation\Rule\ProhibitedRule;
 use Kode\Validation\Rule\RegexRule;
+use Kode\Validation\Rule\RequiredIfRule;
 use Kode\Validation\Rule\RequiredRule;
+use Kode\Validation\Rule\RequiredUnlessRule;
+use Kode\Validation\Rule\RequiredWithRule;
 use Kode\Validation\Rule\RuleInterface;
 use Kode\Validation\Rule\SameRule;
+use Kode\Validation\Rule\SizeRule;
 use Kode\Validation\Rule\StartsWithRule;
+use Kode\Validation\Rule\StringRule;
 use Kode\Validation\Rule\UrlRule;
 
 /**
@@ -53,6 +71,11 @@ use Kode\Validation\Rule\UrlRule;
 class Validator implements ValidatorInterface
 {
     /**
+     * 当前验证库版本号（语义化版本）
+     */
+    public const string VERSION = '1.3.0';
+
+    /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例
      */
     private array $rules = [];
@@ -66,6 +89,11 @@ class Validator implements ValidatorInterface
      * @var bool 是否在首个错误时停止验证
      */
     private bool $stopOnFirstFailure = false;
+
+    /**
+     * @var callable|null 验证前置回调，签名为 function(array $data, array $rules): array
+     */
+    private $beforeValidationCallback = null;
 
     /**
      * 构造函数
@@ -91,32 +119,43 @@ class Validator implements ValidatorInterface
      */
     public function validate(array $data, array $rules, array $messages = []): ValidationResult
     {
+        // 执行前置回调
+        if ($this->beforeValidationCallback !== null) {
+            [$data, $rules] = ($this->beforeValidationCallback)($data, $rules);
+        }
+
         // 使用局部变量存储中间状态，不污染实例属性
         $allErrors = [];
         $validatedData = [];
+        $excludedFields = [];
 
         foreach ($rules as $field => $ruleSet) {
-            // 处理嵌套数组字段：items.*.name → 展开为 items.0.name, items.1.name, ...
+            // 处理嵌套数组字段
             if (str_contains($field, '*')) {
                 $expanded = $this->expandWildcardField($field, $data);
                 foreach ($expanded as $expandedField) {
                     $this->validateSingleField(
                         $expandedField, $ruleSet, $data, $messages,
-                        $allErrors, $validatedData
+                        $allErrors, $validatedData, $excludedFields
                     );
-                    if ($this->stopOnFirstFailure && $allErrors !== []) {
-                        return new ValidationResult(false, $allErrors, $validatedData);
-                    }
                 }
                 continue;
             }
 
-            $this->validateSingleField($field, $ruleSet, $data, $messages, $allErrors, $validatedData);
+            $this->validateSingleField(
+                $field, $ruleSet, $data, $messages,
+                $allErrors, $validatedData, $excludedFields
+            );
 
             // 首个失败即停止
             if ($this->stopOnFirstFailure && $allErrors !== []) {
                 return new ValidationResult(false, $allErrors, $validatedData);
             }
+        }
+
+        // 移除被排除的字段
+        foreach ($excludedFields as $excludedField) {
+            unset($validatedData[$excludedField]);
         }
 
         return new ValidationResult($allErrors === [], $allErrors, $validatedData);
@@ -126,10 +165,26 @@ class Validator implements ValidatorInterface
      * 设置是否在首个验证错误时停止
      *
      * @param bool $stop true 表示遇到第一个错误就立即返回
+     * @return $this
      */
     public function stopOnFirstFailure(bool $stop = true): self
     {
         $this->stopOnFirstFailure = $stop;
+        return $this;
+    }
+
+    /**
+     * 注册验证前置回调
+     *
+     * 在验证开始前调用，可修改数据和规则。
+     * 回调签名：function(array $data, array $rules): array 返回 [$data, $rules]
+     *
+     * @param callable $callback 前置回调
+     * @return $this
+     */
+    public function beforeValidation(callable $callback): self
+    {
+        $this->beforeValidationCallback = $callback;
         return $this;
     }
 
@@ -149,11 +204,13 @@ class Validator implements ValidatorInterface
                 ) {
                 }
 
+                #[\Override]
                 public function validate(string $field, mixed $value, array $params, array $data): ?string
                 {
                     return ($this->callback)($field, $value, $params, $data);
                 }
 
+                #[\Override]
                 public function getName(): string
                 {
                     return $this->name;
@@ -173,6 +230,7 @@ class Validator implements ValidatorInterface
      * @param array        $messages      自定义消息
      * @param array        $allErrors     错误收集（引用传递）
      * @param array        $validatedData 通过数据收集（引用传递）
+     * @param array        $excludedFields 排除字段收集（引用传递）
      */
     private function validateSingleField(
         string $field,
@@ -180,16 +238,17 @@ class Validator implements ValidatorInterface
         array $data,
         array $messages,
         array &$allErrors,
-        array &$validatedData
+        array &$validatedData,
+        array &$excludedFields
     ): void {
         $parsedRules = $this->parseRules($ruleSet);
 
-        // 支持点号分隔的嵌套字段：items.0.name → $data['items'][0]['name']
+        // 支持点号分隔的嵌套字段
         $value = str_contains($field, '.')
             ? $this->getNestedValue($data, $field)
             : ($data[$field] ?? null);
 
-        // 检查 sometimes：字段不存在且规则中含 sometimes 则跳过
+        // 检查 sometimes
         if (!array_key_exists($field, $data) && !str_contains($field, '.')) {
             foreach ($parsedRules as [$ruleName]) {
                 if ($ruleName === 'sometimes') {
@@ -198,7 +257,6 @@ class Validator implements ValidatorInterface
             }
         }
 
-        // 对于点号嵌套字段的 sometimes 检查
         if (str_contains($field, '.')) {
             $nestedExists = $this->getNestedValue($data, $field) !== null
                 || $this->hasNestedKey($data, $field);
@@ -211,7 +269,7 @@ class Validator implements ValidatorInterface
             }
         }
 
-        // 检查 nullable：字段值为 null 且规则中含 nullable 则跳过
+        // 检查 nullable
         if ($value === null) {
             foreach ($parsedRules as [$ruleName]) {
                 if ($ruleName === 'nullable') {
@@ -221,10 +279,20 @@ class Validator implements ValidatorInterface
         }
 
         $fieldErrors = [];
+        $shouldExclude = false;
 
         foreach ($parsedRules as [$ruleName, $params]) {
             // 跳过控制类规则
-            if ($ruleName === 'sometimes' || $ruleName === 'nullable') {
+            if (in_array($ruleName, ['sometimes', 'nullable'], true)) {
+                continue;
+            }
+
+            // 检查排除规则
+            if ($ruleName === 'exclude_if' || $ruleName === 'exclude_unless') {
+                $rule = $this->rules[$ruleName] ?? null;
+                if ($rule !== null && $rule->validate($field, $value, $params, $data) !== null) {
+                    $shouldExclude = true;
+                }
                 continue;
             }
 
@@ -242,6 +310,11 @@ class Validator implements ValidatorInterface
             }
         }
 
+        if ($shouldExclude) {
+            $excludedFields[] = $field;
+            return;
+        }
+
         if ($fieldErrors !== []) {
             $allErrors[$field] = $fieldErrors;
         } else {
@@ -251,13 +324,6 @@ class Validator implements ValidatorInterface
 
     /**
      * 展开通配符字段名
-     *
-     * 将 items.*.name 展开为 ['items.0.name', 'items.1.name', ...]，
-     * 依次遍历 data 中对应的数组索引。
-     *
-     * @param string $field 含 * 的字段名
-     * @param array  $data  完整数据
-     * @return array 展开后的字段名列表
      */
     private function expandWildcardField(string $field, array $data): array
     {
@@ -282,12 +348,6 @@ class Validator implements ValidatorInterface
 
     /**
      * 获取嵌套数据值
-     *
-     * 从 data 中按点号路径提取值：getNestedValue(['a' => ['b' => 1]], 'a.b') → 1
-     *
-     * @param array  $data 数据源
-     * @param string $path 点号分隔路径
-     * @return mixed 提取的值，路径不存在返回 null
      */
     private function getNestedValue(array $data, string $path): mixed
     {
@@ -306,10 +366,6 @@ class Validator implements ValidatorInterface
 
     /**
      * 检查嵌套路径是否存在于数据中
-     *
-     * @param array  $data 数据源
-     * @param string $path 点号分隔路径
-     * @return bool 路径是否存在
      */
     private function hasNestedKey(array $data, string $path): bool
     {
@@ -357,43 +413,59 @@ class Validator implements ValidatorInterface
             new BeforeRule(),
             new ProhibitedRule(),
             new ProhibitedIfRule(),
+            new StringRule(),
+            new IntegerRule(),
+            new FloatRule(),
+            new DistinctRule(),
+            new SizeRule(),
+            new GtRule(),
+            new GteRule(),
+            new LtRule(),
+            new LteRule(),
+            new AcceptedRule(),
+            new DeclinedRule(),
+            new DigitsRule(),
+            new DigitsBetweenRule(),
+            new RequiredIfRule(),
+            new RequiredUnlessRule(),
+            new RequiredWithRule(),
+            new ExcludeIfRule(),
+            new ExcludeUnlessRule(),
         ];
 
         foreach ($builtinRules as $rule) {
             $this->rules[$rule->getName()] = $rule;
         }
 
-        // 注册内置控制规则（sometimes 和 nullable）
-        $this->rules['sometimes'] = new class implements RuleInterface {
+        // 注册内置控制规则
+        $this->registerControlRule('sometimes');
+        $this->registerControlRule('nullable');
+    }
+
+    /**
+     * 注册无操作控制规则
+     */
+    private function registerControlRule(string $name): void
+    {
+        $this->rules[$name] = new class($name) implements RuleInterface {
+            public function __construct(private string $name) {}
+
+            #[\Override]
             public function validate(string $field, mixed $value, array $params, array $data): ?string
             {
                 return null;
             }
 
+            #[\Override]
             public function getName(): string
             {
-                return 'sometimes';
-            }
-        };
-
-        $this->rules['nullable'] = new class implements RuleInterface {
-            public function validate(string $field, mixed $value, array $params, array $data): ?string
-            {
-                return null;
-            }
-
-            public function getName(): string
-            {
-                return 'nullable';
+                return $this->name;
             }
         };
     }
 
     /**
      * 解析规则定义
-     *
-     * @param array|string $ruleSet 规则定义
-     * @return array 解析后的规则列表，每项为 [规则名, 参数数组]
      */
     private function parseRules(array|string $ruleSet): array
     {

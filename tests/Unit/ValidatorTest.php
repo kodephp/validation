@@ -1476,4 +1476,494 @@ class ValidatorTest extends TestCase
 
         $this->assertTrue($result->isValid());
     }
+
+    // ==================== 字符串规则 ====================
+
+    public function test字符串规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三'],
+            ['name' => 'string']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test字符串规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => 123],
+            ['name' => 'string']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 整数规则 ====================
+
+    public function test整数规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['count' => 42],
+            ['count' => 'integer']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test整数规则字符串数字通过(): void
+    {
+        $result = $this->validator->validate(
+            ['count' => '42'],
+            ['count' => 'integer']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test整数规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['count' => 42.5],
+            ['count' => 'integer']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 浮点数规则 ====================
+
+    public function test浮点数规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['price' => 19.99],
+            ['price' => 'float']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test浮点数规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['price' => 'abc'],
+            ['price' => 'float']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 唯一直规则 ====================
+
+    public function test唯一直规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['tags' => ['php', 'js', 'go']],
+            ['tags' => 'distinct']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test唯一直规则验证失败重复值(): void
+    {
+        $result = $this->validator->validate(
+            ['tags' => ['php', 'js', 'php']],
+            ['tags' => 'distinct']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 精确大小规则 ====================
+
+    public function test精确大小规则字符串通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'ABC'],
+            ['code' => 'size:3']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test精确大小规则数字通过(): void
+    {
+        $result = $this->validator->validate(
+            ['count' => 5],
+            ['count' => 'size:5']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test精确大小规则数组通过(): void
+    {
+        $result = $this->validator->validate(
+            ['tags' => [1, 2, 3]],
+            ['tags' => 'size:3']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test精确大小规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'AB'],
+            ['code' => 'size:3']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 比较规则 gt/gte/lt/lte ====================
+
+    public function testGT规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 20],
+            ['max' => 'gt:min']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testGT规则验证失败等于(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 10],
+            ['max' => 'gt:min']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function testGTE规则验证通过等于(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 10],
+            ['max' => 'gte:min']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testGTE规则验证失败小于(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 5],
+            ['max' => 'gte:min']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function testLT规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 20],
+            ['min' => 'lt:max']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testLTE规则验证通过等于(): void
+    {
+        $result = $this->validator->validate(
+            ['min' => 10, 'max' => 10],
+            ['min' => 'lte:max']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 接受/拒绝规则 ====================
+
+    public function test接受规则true通过(): void
+    {
+        $result = $this->validator->validate(
+            ['agree' => true],
+            ['agree' => 'accepted']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test接受规则on通过(): void
+    {
+        $result = $this->validator->validate(
+            ['agree' => 'on'],
+            ['agree' => 'accepted']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test接受规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['agree' => false],
+            ['agree' => 'accepted']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test拒绝规则false通过(): void
+    {
+        $result = $this->validator->validate(
+            ['decline' => false],
+            ['decline' => 'declined']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test拒绝规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['decline' => true],
+            ['decline' => 'declined']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 数字位数规则 ====================
+
+    public function test数字位数规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 123456],
+            ['code' => 'digits:6']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test数字位数规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 12345],
+            ['code' => 'digits:6']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test数字位数区间规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['phone' => 13800138000],
+            ['phone' => 'digits_between:6,12']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test数字位数区间规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 123],
+            ['code' => 'digits_between:6,12']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 条件必填规则 ====================
+
+    public function test条件必填规则required_if触发(): void
+    {
+        $result = $this->validator->validate(
+            ['use_shipping' => 'yes', 'address' => ''],
+            ['address' => 'required_if:use_shipping,yes']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('required_if', $result->errors()['address']);
+    }
+
+    public function test条件必填规则required_if不触发(): void
+    {
+        $result = $this->validator->validate(
+            ['use_shipping' => 'no', 'address' => ''],
+            ['address' => 'required_if:use_shipping,yes']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test条件必填规则required_unless触发(): void
+    {
+        $result = $this->validator->validate(
+            ['type' => 'user', 'company_name' => ''],
+            ['company_name' => 'required_unless:type,user']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test条件必填规则required_unless非触发(): void
+    {
+        $result = $this->validator->validate(
+            ['type' => 'company', 'company_name' => ''],
+            ['company_name' => 'required_unless:type,user']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test伴随必填规则required_with触发(): void
+    {
+        $result = $this->validator->validate(
+            ['shipping' => 'express', 'tracking' => ''],
+            ['tracking' => 'required_with:shipping']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test伴随必填规则required_with不触发(): void
+    {
+        $result = $this->validator->validate(
+            ['shipping' => '', 'tracking' => ''],
+            ['tracking' => 'required_with:shipping']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 排除规则 ====================
+
+    public function test排除规则exclude_if(): void
+    {
+        $result = $this->validator->validate(
+            ['role' => 'guest', 'password' => 'secret'],
+            [
+                'role'     => 'required',
+                'password' => 'required|exclude_if:role,guest',
+            ]
+        );
+
+        $this->assertTrue($result->isValid());
+        $this->assertArrayNotHasKey('password', $result->validatedData());
+        $this->assertArrayHasKey('role', $result->validatedData());
+    }
+
+    public function test排除规则exclude_unless(): void
+    {
+        $result = $this->validator->validate(
+            ['role' => 'admin', 'password' => 'secret'],
+            [
+                'role'     => 'required',
+                'password' => 'required|exclude_unless:role,admin',
+            ]
+        );
+
+        $this->assertTrue($result->isValid());
+        $this->assertArrayHasKey('password', $result->validatedData());
+    }
+
+    public function test排除规则exclude_unless排除(): void
+    {
+        $result = $this->validator->validate(
+            ['role' => 'user', 'password' => 'secret'],
+            [
+                'role'     => 'required',
+                'password' => 'required|exclude_unless:role,admin',
+            ]
+        );
+
+        $this->assertTrue($result->isValid());
+        $this->assertArrayNotHasKey('password', $result->validatedData());
+    }
+
+    // ==================== 前置回调 ====================
+
+    public function test前置回调修改数据(): void
+    {
+        $validator = new Validator(require dirname(__DIR__, 2) . '/config/validation.php');
+        $validator->beforeValidation(function (array $data, array $rules): array {
+            $data['trimmed_name'] = trim($data['name'] ?? '');
+            $rules['trimmed_name'] = 'required|min:2';
+
+            return [$data, $rules];
+        });
+
+        $result = $validator->validate(
+            ['name' => '  张三  '],
+            ['name' => 'required']
+        );
+
+        $this->assertTrue($result->isValid());
+        $this->assertArrayHasKey('trimmed_name', $result->validatedData());
+        $this->assertSame('张三', $result->validatedData()['trimmed_name']);
+    }
+
+    public function test前置回调添加规则(): void
+    {
+        $validator = new Validator(require dirname(__DIR__, 2) . '/config/validation.php');
+        $validator->beforeValidation(function (array $data, array $rules): array {
+            if (($data['is_admin'] ?? false) === true) {
+                $rules['admin_code'] = 'required|min:6';
+            }
+
+            return [$data, $rules];
+        });
+
+        $result = $validator->validate(
+            ['is_admin' => true, 'admin_code' => 'secret_code'],
+            ['is_admin' => 'required|boolean']
+        );
+
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== VERSION 常量 ====================
+
+    public function testVERSION常量存在(): void
+    {
+        $this->assertTrue(defined(Validator::class . '::VERSION'));
+        $this->assertSame('1.3.0', Validator::VERSION);
+    }
+
+    // ==================== 综合性 v1.3 场景 ====================
+
+    public function test完整表单string_int_float组合(): void
+    {
+        $data = [
+            'name'   => '张三',
+            'age'    => 25,
+            'score'  => 95.5,
+            'tags'   => ['red', 'blue', 'green'],
+            'code'   => 123456,
+            'phone'  => 13800138000,
+            'agree'  => true,
+        ];
+
+        $rules = [
+            'name'  => 'required|string|min:2',
+            'age'   => 'required|integer|between:1,120',
+            'score' => 'required|float|between:0,100',
+            'tags'  => 'required|array|distinct|size:3',
+            'code'  => 'required|digits:6',
+            'phone' => 'required|digits_between:6,12',
+            'agree' => 'required|accepted',
+        ];
+
+        $result = $this->validator->validate($data, $rules);
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test条件必填与排除组合(): void
+    {
+        $data = [
+            'role'         => 'guest',
+            'shipping'     => 'express',
+            'tracking'     => 'TRACK001',
+            'admin_access' => 'secret_key',
+        ];
+
+        $rules = [
+            'role'         => 'required',
+            'shipping'     => 'sometimes',
+            'tracking'     => 'required_with:shipping',
+            'admin_access' => 'exclude_if:role,guest',
+        ];
+
+        $result = $this->validator->validate($data, $rules);
+
+        $this->assertTrue($result->isValid());
+        $this->assertArrayHasKey('tracking', $result->validatedData());
+        $this->assertArrayNotHasKey('admin_access', $result->validatedData());
+    }
+
+    public function test比较规则链gt_gte_lt_lte(): void
+    {
+        $data = [
+            'min_price'  => 10,
+            'max_price'  => 20,
+            'min_age'    => 18,
+            'max_age'    => 65,
+        ];
+
+        $rules = [
+            'min_price'  => 'required|numeric|lt:max_price',
+            'max_price'  => 'required|numeric|gt:min_price',
+            'min_age'    => 'required|numeric|lte:max_age',
+            'max_age'    => 'required|numeric|gte:min_age',
+        ];
+
+        $result = $this->validator->validate($data, $rules);
+        $this->assertTrue($result->isValid());
+    }
 }
