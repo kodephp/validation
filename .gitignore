@@ -1,0 +1,25 @@
+# IDE / Editor
+.trae/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Composer 依赖
+/vendor/
+
+# Composer lock（库包通常忽略，项目包提交）
+/composer.lock
+
+# 缓存与日志
+*.log
+*.cache
+
+# 单元测试缓存
+.phpunit.cache/
+.phpunit.result.cache
+
+# 操作系统
+.DS_Store
+Thumbs.db

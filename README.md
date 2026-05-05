@@ -1,0 +1,404 @@
+# kode/validation
+
+协程安全的 PHP 数据验证库，专为 kode framework 设计，支持 PHP 8.2+。
+
+## 特性
+
+- **协程安全**：所有验证过程使用局部变量，多 Fiber 并发互不干扰
+- **管道规则**：`required|email|min:5|max:100` 直观的规则表达式
+- **8+ 内置规则**：覆盖必填、类型、格式、范围、比较等常见场景
+- **自定义规则**：闭包或类均可注册，灵活扩展
+- **中文错误消息**：默认中文模板，完整的字段别名和占位符支持
+- **只读结果对象**：不可变设计，安全传递
+- **10 级数据流管道**：面向 HLS FPGA 综合的流水线架构
+
+## 环境要求
+
+- PHP >= 8.2
+- [kode/context](https://github.com/kodephp/context) ^1.0（协程上下文）
+
+## 安装
+
+```bash
+composer require kode/validation
+```
+
+## 快速开始
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use Kode\Validation\Validator;
+
+// 使用默认中文消息模板
+$validator = new Validator(require 'vendor/kode/validation/config/validation.php');
+
+$data = [
+    'name'  => '张三',
+    'email' => 'zhangsan@example.com',
+    'age'   => 25,
+];
+
+$rules = [
+    'name'  => 'required|min:2|max:20',
+    'email' => 'required|email',
+    'age'   => 'required|between:18,60',
+];
+
+$result = $validator->validate($data, $rules);
+
+if ($result->isValid()) {
+    $safeData = $result->validatedData();
+    // 使用 $safeData 进行后续操作
+} else {
+    $errors = $result->errors();
+    print_r($errors);
+    // 输出：['name' => ['required' => 'name 不能为空'], ...]
+}
+```
+
+## 内置规则
+
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `required` | `required` | 字段必填，null/空字符串/空数组不通过 |
+| `email` | `email` | 邮箱格式（基于 `filter_var`） |
+| `min` | `min:值` | 最小值，数字直接比较，字符串按 `mb_strlen` |
+| `max` | `max:值` | 最大值，同上 |
+| `between` | `between:最小值,最大值` | 区间范围，含边界 |
+| `in` | `in:值1,值2,值3` | 枚举值，严格类型比较 |
+| `regex` | `regex:/正则/` | 正则表达式匹配 |
+| `confirmed` | `confirmed` | 确认字段，需同名 `_confirmation` 后缀字段 |
+
+### 规则详解
+
+#### required - 必填验证
+
+```php
+['name' => 'required']
+
+// 以下视为空：
+null    → 不通过
+''      → 不通过
+[]      → 不通过
+0       → 通过（数字零不是空）
+'0'     → 通过
+false   → 通过
+```
+
+#### email - 邮箱验证
+
+```php
+['email' => 'email']
+
+// 空值跳过，如需必填请组合 required：
+['email' => 'required|email']
+```
+
+#### min / max - 最小最大值
+
+```php
+['age' => 'min:18']           // 数字 ≥ 18
+['name' => 'min:2']           // 字符串长度 ≥ 2（mb_strlen）
+['score' => 'max:100']        // 数字 ≤ 100
+['title' => 'max:50']         // 字符串长度 ≤ 50
+```
+
+#### between - 区间范围
+
+```php
+['age' => 'between:18,60']    // 18 ≤ age ≤ 60
+['name' => 'between:2,20']    // 2 ≤ 字符长度 ≤ 20
+```
+
+#### in - 枚举值
+
+```php
+['status' => 'in:active,inactive,pending']
+// 严格类型比较（===），'1' ≠ 1
+```
+
+#### regex - 正则匹配
+
+```php
+['phone' => 'regex:/^1[3-9]\d{9}$/']
+['code' => 'regex:/^[A-Z]{2}\d{4}$/']
+```
+
+#### confirmed - 确认字段
+
+```php
+// 数据中需存在同名 _confirmation 字段
+$data = ['password' => 'secret', 'password_confirmation' => 'secret'];
+$rules = ['password' => 'confirmed'];
+```
+
+## 自定义错误消息
+
+### 规则级别
+
+```php
+$messages = [
+    'name.required' => '姓名必须要填写',
+    'email.email'   => '邮箱格式不正确',
+];
+
+$result = $validator->validate($data, $rules, $messages);
+```
+
+### 字段别名
+
+```php
+$messages = [
+    'user_email.attribute' => '用户邮箱',
+    'user_email.required'  => ':attribute 不能为空',  // 用户邮箱 不能为空
+];
+
+$rules = ['user_email' => 'required|email'];
+```
+
+### 占位符
+
+| 占位符 | 替换为 |
+|--------|--------|
+| `:attribute` | 字段别名或字段原名 |
+| `:value` | 字段当前值 |
+| `:param_0` | 规则第 1 个参数 |
+| `:param_1` | 规则第 2 个参数 |
+| `:param_N` | 规则第 N+1 个参数 |
+
+## 自定义规则
+
+### 闭包方式
+
+```php
+$validator->addRule('is_even', function (string $field, mixed $value, array $params, array $data): ?string {
+    if ($value === null || $value === '') {
+        return null; // 跳过空值
+    }
+    if ((int) $value % 2 !== 0) {
+        return 'is_even'; // 返回规则名作为错误 key
+    }
+    return null; // 通过
+});
+
+$result = $validator->validate(['num' => 4], ['num' => 'is_even']);
+```
+
+### 类方式
+
+```php
+use Kode\Validation\Rule\RuleInterface;
+
+class CustomRule implements RuleInterface
+{
+    public function validate(string $field, mixed $value, array $params, array $data): ?string
+    {
+        // 自定义逻辑
+        return null; // 或返回错误消息
+    }
+
+    public function getName(): string
+    {
+        return 'custom';
+    }
+}
+
+$validator->addRule('custom', new CustomRule());
+```
+
+## 数组格式规则
+
+除管道字符串外，也支持数组格式：
+
+```php
+$rules = [
+    'name' => ['required', 'min:2', 'max:20'],
+    'email' => ['required', 'email'],
+];
+
+// 甚至混用规则类实例
+use Kode\Validation\Rule\RequiredRule;
+use Kode\Validation\Rule\EmailRule;
+
+$rules = [
+    'email' => [new RequiredRule(), new EmailRule()],
+];
+```
+
+## 验证结果
+
+`ValidationResult` 是只读对象，提供三个方法：
+
+```php
+$result = $validator->validate($data, $rules);
+
+$result->isValid();        // bool: 全部通过为 true
+$result->errors();         // array: ['字段' => ['规则' => '消息']]
+$result->validatedData();  // array: 仅通过验证的字段数据
+```
+
+### 部分验证结果
+
+当多字段验证时，部分字段通过、部分失败：
+
+```php
+$data = ['name' => '张三', 'email' => 'invalid'];
+$rules = ['name' => 'required|min:2', 'email' => 'required|email'];
+
+$result = $validator->validate($data, $rules);
+
+$result->isValid();  // false
+$result->errors();   // ['email' => ['email' => 'email 不是有效的邮箱地址']]
+$result->validatedData();  // ['name' => '张三']  ← 仅包含通过验证的字段
+```
+
+## 实际应用示例
+
+### 用户注册
+
+```php
+$data = [
+    'username'              => 'zhangsan',
+    'email'                 => 'zhangsan@example.com',
+    'password'              => 'Secret123!',
+    'password_confirmation' => 'Secret123!',
+    'age'                   => 25,
+];
+
+$rules = [
+    'username' => 'required|min:3|max:20|regex:/^[a-zA-Z0-9_]+$/',
+    'email'    => 'required|email',
+    'password' => 'required|min:6|max:100|confirmed',
+    'age'      => 'required|between:18,100',
+];
+
+$messages = [
+    'username.attribute' => '用户名',
+    'email.attribute'    => '邮箱',
+    'password.attribute' => '密码',
+    'age.attribute'      => '年龄',
+    'username.regex'     => '用户名只能包含字母、数字和下划线',
+];
+
+$result = $validator->validate($data, $rules, $messages);
+
+if (!$result->isValid()) {
+    foreach ($result->errors() as $field => $fieldErrors) {
+        foreach ($fieldErrors as $rule => $message) {
+            echo "{$field}: {$message}\n";
+        }
+    }
+}
+```
+
+### API 请求验证
+
+```php
+function handleCreateUser(array $request): array
+{
+    $validator = new Validator(require 'config/validation.php');
+
+    $result = $validator->validate($request, [
+        'name'  => 'required|min:2|max:50',
+        'email' => 'required|email',
+        'role'  => 'required|in:user,admin,moderator',
+    ]);
+
+    if (!$result->isValid()) {
+        return ['code' => 422, 'errors' => $result->errors()];
+    }
+
+    $user = createUser($result->validatedData());
+    return ['code' => 201, 'data' => $user];
+}
+```
+
+## 协程安全性
+
+`Validator` 不持有单次验证的中间状态，所有临时数据均为局部变量。即使多个 Fiber 同时调用 `validate()`，也不会出现数据交叉污染。
+
+```php
+for ($i = 0; $i < 10; $i++) {
+    $fiber = new Fiber(function () use ($i) {
+        $result = $validator->validate(
+            ['id' => $i],
+            ['id' => 'required']
+        );
+        return $result->isValid();
+    });
+    $fiber->start();
+    // ... 并发执行
+}
+```
+
+## 框架集成
+
+如果使用 `kode/di` 容器，可通过 Bundle 自动注册：
+
+```php
+// Bundle 会自动加载（通过 composer.json extra.kode.bundle 配置）
+// 或手动注册：
+$app->bind(ValidatorInterface::class, Validator::class);
+```
+
+不使用容器时直接实例化即可：
+
+```php
+$validator = new Validator(require 'config/validation.php');
+```
+
+## 自定义默认消息
+
+复制配置文件到你的项目：
+
+```bash
+cp vendor/kode/validation/config/validation.php config/validation.php
+```
+
+修改后传入构造函数：
+
+```php
+$validator = new Validator(require 'config/validation.php');
+```
+
+## 类图
+
+```
+┌─────────────────────┐     ┌──────────────────────────┐
+│  ValidatorInterface │     │ValidationResultInterface │
+│  ─────────────────── │     │  ────────────────────────│
+│  + validate()       │     │  + isValid()             │
+└──────────┬──────────┘     │  + errors()              │
+           │                │  + validatedData()       │
+           ▼                └─────────────┬────────────┘
+┌─────────────────────┐                  │
+│     Validator       │                  ▼
+│  ─────────────────── │     ┌──────────────────────────┐
+│  - rules: array      │────▶│   ValidationResult       │
+│  - defaultMessages   │     │  ────────────────────────│
+│  ─────────────────── │     │  - valid: bool           │
+│  + validate()        │     │  - errors: array         │
+│  + addRule()         │     │  - validatedData: array  │
+│  - parseRules()      │     └──────────────────────────┘
+│  - formatMessage()   │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│   RuleInterface     │
+│  ─────────────────── │
+│  + validate()       │
+│  + getName()        │
+└──────────┬──────────┘
+           │
+  ┌────────┼────────┬────────┬─────────┬─────────┬────────┬───────┐
+  ▼        ▼        ▼        ▼         ▼         ▼        ▼       ▼
+Required Email    Min     Max     Between     In      Regex  Confirmed
+```
+
+## 许可证
+
+MIT License. 详见 [LICENSE](LICENSE) 文件。

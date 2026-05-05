@@ -1,0 +1,38 @@
+{
+    "name": "kode/validation",
+    "description": "协程安全的数据验证库 for kode framework",
+    "type": "library",
+    "version": "1.1.0",
+    "license": "MIT",
+    "keywords": ["kode", "validation", "validator", "coroutine", "fiber"],
+    "authors": [
+        {
+            "name": "KodePHP",
+            "homepage": "https://github.com/kodephp"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "kode/context": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kode\\Validation\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kode\\Validation\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "kode": {
+            "bundle": "Kode\\Validation\\Provider\\ValidationBundle"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
