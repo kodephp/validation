@@ -1893,7 +1893,7 @@ class ValidatorTest extends TestCase
     public function testVERSION常量存在(): void
     {
         $this->assertTrue(defined(Validator::class . '::VERSION'));
-        $this->assertSame('1.3.0', Validator::VERSION);
+        $this->assertSame('1.3.1', Validator::VERSION);
     }
 
     // ==================== 综合性 v1.3 场景 ====================

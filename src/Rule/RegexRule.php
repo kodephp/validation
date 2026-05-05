@@ -21,7 +21,6 @@ class RegexRule implements RuleInterface
      * @param array  $data   完整的待验证数据
      * @return string|null 验证失败返回原生错误消息，通过返回 null
      */
-    #[Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -40,7 +39,6 @@ class RegexRule implements RuleInterface
     /**
      * 获取规则名称
      */
-    #[Override]
     public function getName(): string
     {
         return 'regex';
