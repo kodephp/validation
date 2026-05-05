@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Kode\Validation\Rule;
 
 /**
- * URL 验证规则，协程安全（无状态）
+ * 布尔验证规则，协程安全（无状态）
  *
- * 使用 filter_var(FILTER_VALIDATE_URL) 验证 URL 格式。
+ * 接受：true, false, 0, 1, "0", "1", "true", "false"
  */
-class UrlRule implements RuleInterface
+class BooleanRule implements RuleInterface
 {
     /**
-     * 执行 URL 格式验证
+     * 执行布尔值验证
      *
      * @param string $field  字段名
      * @param mixed  $value  字段值
@@ -27,8 +27,10 @@ class UrlRule implements RuleInterface
             return null;
         }
 
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return 'url';
+        $acceptable = [true, false, 0, 1, '0', '1', 'true', 'false'];
+
+        if (!in_array($value, $acceptable, true)) {
+            return 'boolean';
         }
 
         return null;
@@ -40,6 +42,6 @@ class UrlRule implements RuleInterface
     #[Override]
     public function getName(): string
     {
-        return 'url';
+        return 'boolean';
     }
 }

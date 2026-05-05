@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Kode\Validation\Rule;
 
 /**
- * URL 验证规则，协程安全（无状态）
+ * 禁止字段验证规则，协程安全（无状态）
  *
- * 使用 filter_var(FILTER_VALIDATE_URL) 验证 URL 格式。
+ * 验证指定字段必须不存在于数据中。
+ * 若字段存在（无论值是什么），验证失败。
  */
-class UrlRule implements RuleInterface
+class ProhibitedRule implements RuleInterface
 {
     /**
-     * 执行 URL 格式验证
+     * 执行禁止字段验证
      *
      * @param string $field  字段名
      * @param mixed  $value  字段值
@@ -23,12 +24,8 @@ class UrlRule implements RuleInterface
     #[Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
-        if ($value === null || $value === '' || $value === []) {
-            return null;
-        }
-
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return 'url';
+        if (array_key_exists($field, $data)) {
+            return 'prohibited';
         }
 
         return null;
@@ -40,6 +37,6 @@ class UrlRule implements RuleInterface
     #[Override]
     public function getName(): string
     {
-        return 'url';
+        return 'prohibited';
     }
 }

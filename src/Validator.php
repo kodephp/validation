@@ -5,22 +5,31 @@ declare(strict_types=1);
 namespace Kode\Validation;
 
 use Kode\Validation\Contract\ValidatorInterface;
+use Kode\Validation\Rule\AfterRule;
 use Kode\Validation\Rule\AlnumRule;
 use Kode\Validation\Rule\AlphaRule;
+use Kode\Validation\Rule\ArrayRule;
+use Kode\Validation\Rule\BeforeRule;
 use Kode\Validation\Rule\BetweenRule;
+use Kode\Validation\Rule\BooleanRule;
 use Kode\Validation\Rule\ConfirmedRule;
 use Kode\Validation\Rule\DateRule;
 use Kode\Validation\Rule\DifferentRule;
 use Kode\Validation\Rule\EmailRule;
+use Kode\Validation\Rule\EndsWithRule;
 use Kode\Validation\Rule\InRule;
 use Kode\Validation\Rule\IpRule;
+use Kode\Validation\Rule\JsonRule;
 use Kode\Validation\Rule\MaxRule;
 use Kode\Validation\Rule\MinRule;
 use Kode\Validation\Rule\NumericRule;
+use Kode\Validation\Rule\ProhibitedIfRule;
+use Kode\Validation\Rule\ProhibitedRule;
 use Kode\Validation\Rule\RegexRule;
 use Kode\Validation\Rule\RequiredRule;
 use Kode\Validation\Rule\RuleInterface;
 use Kode\Validation\Rule\SameRule;
+use Kode\Validation\Rule\StartsWithRule;
 use Kode\Validation\Rule\UrlRule;
 
 /**
@@ -339,6 +348,15 @@ class Validator implements ValidatorInterface
             new DateRule(),
             new SameRule(),
             new DifferentRule(),
+            new JsonRule(),
+            new ArrayRule(),
+            new BooleanRule(),
+            new StartsWithRule(),
+            new EndsWithRule(),
+            new AfterRule(),
+            new BeforeRule(),
+            new ProhibitedRule(),
+            new ProhibitedIfRule(),
         ];
 
         foreach ($builtinRules as $rule) {

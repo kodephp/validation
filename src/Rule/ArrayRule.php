@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Kode\Validation\Rule;
 
 /**
- * URL 验证规则，协程安全（无状态）
+ * 数组验证规则，协程安全（无状态）
  *
- * 使用 filter_var(FILTER_VALIDATE_URL) 验证 URL 格式。
+ * 验证值是否为数组类型。
  */
-class UrlRule implements RuleInterface
+class ArrayRule implements RuleInterface
 {
     /**
-     * 执行 URL 格式验证
+     * 执行数组类型验证
      *
      * @param string $field  字段名
      * @param mixed  $value  字段值
@@ -27,8 +27,8 @@ class UrlRule implements RuleInterface
             return null;
         }
 
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return 'url';
+        if (!is_array($value)) {
+            return 'array';
         }
 
         return null;
@@ -40,6 +40,6 @@ class UrlRule implements RuleInterface
     #[Override]
     public function getName(): string
     {
-        return 'url';
+        return 'array';
     }
 }

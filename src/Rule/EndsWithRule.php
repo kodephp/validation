@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Kode\Validation\Rule;
 
 /**
- * URL 验证规则，协程安全（无状态）
+ * 后缀验证规则，协程安全（无状态）
  *
- * 使用 filter_var(FILTER_VALIDATE_URL) 验证 URL 格式。
+ * 验证字符串是否以指定后缀结尾（多字节安全）。
+ * 规则格式：ends_with:suffix
  */
-class UrlRule implements RuleInterface
+class EndsWithRule implements RuleInterface
 {
     /**
-     * 执行 URL 格式验证
+     * 执行后缀验证
      *
      * @param string $field  字段名
      * @param mixed  $value  字段值
-     * @param array  $params 规则参数（此规则无参数）
+     * @param array  $params 规则参数，第一个元素为后缀字符串
      * @param array  $data   完整的待验证数据
      * @return string|null 验证失败返回规则名，通过返回 null
      */
@@ -27,8 +28,10 @@ class UrlRule implements RuleInterface
             return null;
         }
 
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return 'url';
+        $suffix = (string) ($params[0] ?? '');
+
+        if ($suffix === '' || !str_ends_with((string) $value, $suffix)) {
+            return 'ends_with';
         }
 
         return null;
@@ -40,6 +43,6 @@ class UrlRule implements RuleInterface
     #[Override]
     public function getName(): string
     {
-        return 'url';
+        return 'ends_with';
     }
 }

@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Kode\Validation\Rule;
 
 /**
- * URL 验证规则，协程安全（无状态）
+ * JSON 验证规则，协程安全（无状态）
  *
- * 使用 filter_var(FILTER_VALIDATE_URL) 验证 URL 格式。
+ * PHP 8.3+ 使用 json_validate()，低版本回退到 json_decode()。
  */
-class UrlRule implements RuleInterface
+class JsonRule implements RuleInterface
 {
     /**
-     * 执行 URL 格式验证
+     * 执行 JSON 格式验证
      *
      * @param string $field  字段名
      * @param mixed  $value  字段值
@@ -27,8 +27,19 @@ class UrlRule implements RuleInterface
             return null;
         }
 
-        if (filter_var($value, FILTER_VALIDATE_URL) === false) {
-            return 'url';
+        if (!is_string($value)) {
+            return 'json';
+        }
+
+        if (PHP_VERSION_ID >= 80300) {
+            if (!json_validate($value)) {
+                return 'json';
+            }
+        } else {
+            json_decode($value);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return 'json';
+            }
         }
 
         return null;
@@ -40,6 +51,6 @@ class UrlRule implements RuleInterface
     #[Override]
     public function getName(): string
     {
-        return 'url';
+        return 'json';
     }
 }

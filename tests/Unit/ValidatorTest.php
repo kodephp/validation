@@ -1160,4 +1160,320 @@ class ValidatorTest extends TestCase
         $this->assertTrue($result->isValid());
         $this->assertSame([], $result->errors());
     }
+
+    // ==================== JSON 规则 ====================
+
+    public function testJSON规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['payload' => '{"key":"value"}'],
+            ['payload' => 'json']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testJSON规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['payload' => '{invalid'],
+            ['payload' => 'json']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('json', $result->errors()['payload']);
+    }
+
+    public function testJSON规则数组类型验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['payload' => '["a","b"]'],
+            ['payload' => 'json']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 数组规则 ====================
+
+    public function test数组规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['tags' => ['php', 'web']],
+            ['tags' => 'array']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test数组规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['tags' => 'not-array'],
+            ['tags' => 'array']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('array', $result->errors()['tags']);
+    }
+
+    // ==================== 布尔规则 ====================
+
+    public function test布尔规则true通过(): void
+    {
+        $result = $this->validator->validate(
+            ['active' => true],
+            ['active' => 'boolean']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test布尔规则false通过(): void
+    {
+        $result = $this->validator->validate(
+            ['active' => false],
+            ['active' => 'boolean']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test布尔规则1通过(): void
+    {
+        $result = $this->validator->validate(
+            ['active' => 1],
+            ['active' => 'boolean']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test布尔规则字符true通过(): void
+    {
+        $result = $this->validator->validate(
+            ['active' => 'true'],
+            ['active' => 'boolean']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test布尔规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['active' => 'yes'],
+            ['active' => 'boolean']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 前缀规则 ====================
+
+    public function test前缀规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['url' => 'https://example.com'],
+            ['url' => 'starts_with:https://']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test前缀规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['url' => 'http://example.com'],
+            ['url' => 'starts_with:https://']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test前缀规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['url' => null],
+            ['url' => 'starts_with:https://']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 后缀规则 ====================
+
+    public function test后缀规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['email' => 'user@example.com'],
+            ['email' => 'ends_with:.com']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test后缀规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['email' => 'user@example.org'],
+            ['email' => 'ends_with:.com']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 日期晚于规则 ====================
+
+    public function test日期晚于规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['start_date' => '2024-01-01', 'end_date' => '2024-12-31'],
+            ['end_date' => 'after:start_date']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test日期晚于规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['start_date' => '2024-12-31', 'end_date' => '2024-01-01'],
+            ['end_date' => 'after:start_date']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('after', $result->errors()['end_date']);
+    }
+
+    public function test日期晚于规则目标字段为空时跳过(): void
+    {
+        $result = $this->validator->validate(
+            ['start_date' => null, 'end_date' => '2024-12-31'],
+            ['end_date' => 'after:start_date']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 日期早于规则 ====================
+
+    public function test日期早于规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['start_date' => '2024-01-01', 'end_date' => '2024-12-31'],
+            ['start_date' => 'before:end_date']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test日期早于规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['start_date' => '2024-12-31', 'end_date' => '2024-01-01'],
+            ['start_date' => 'before:end_date']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 禁止字段规则 ====================
+
+    public function test禁止字段规则通过不存在(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三'],
+            ['role' => 'prohibited']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test禁止字段规则失败存在(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三', 'role' => 'admin'],
+            ['role' => 'prohibited']
+        );
+        $this->assertFalse($result->isValid());
+        $this->assertArrayHasKey('prohibited', $result->errors()['role']);
+    }
+
+    // ==================== 条件禁止规则 ====================
+
+    public function test条件禁止规则通过条件不满足(): void
+    {
+        $result = $this->validator->validate(
+            ['type' => 'user', 'admin_code' => 'secret'],
+            ['admin_code' => 'prohibited_if:type,admin']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test条件禁止规则失败条件满足(): void
+    {
+        $result = $this->validator->validate(
+            ['type' => 'admin', 'admin_code' => 'secret'],
+            ['admin_code' => 'prohibited_if:type,admin']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test条件禁止规则字段不存在时通过(): void
+    {
+        $result = $this->validator->validate(
+            ['type' => 'admin'],
+            ['admin_code' => 'prohibited_if:type,admin']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 综合性 v1.2 场景测试 ====================
+
+    public function test表单提交boolean与数组组合(): void
+    {
+        $data = [
+            'subscribe' => true,
+            'tags'      => ['news', 'tech'],
+            'meta'      => '{"version":"1.0"}',
+        ];
+
+        $rules = [
+            'subscribe' => 'required|boolean',
+            'tags'      => 'required|array',
+            'meta'      => 'required|json',
+        ];
+
+        $result = $this->validator->validate($data, $rules);
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test日期范围验证after_before组合(): void
+    {
+        $data = [
+            'start' => '2024-01-01',
+            'end'   => '2024-12-31',
+        ];
+
+        $rules = [
+            'start' => 'required|before:end',
+            'end'   => 'required|after:start',
+        ];
+
+        $messages = [
+            'start.attribute' => '开始日期',
+            'end.attribute'   => '结束日期',
+        ];
+
+        $result = $this->validator->validate($data, $rules, $messages);
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test字符串前缀后缀验证(): void
+    {
+        $data = [
+            'url'   => 'https://example.com',
+            'email' => 'user@example.com',
+        ];
+
+        $rules = [
+            'url'   => 'required|starts_with:https://',
+            'email' => 'required|ends_with:.com',
+        ];
+
+        $result = $this->validator->validate($data, $rules);
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test禁止字段条件组合(): void
+    {
+        $data = ['role' => 'user'];
+
+        $result = $this->validator->validate($data, [
+            'role'      => 'required',
+            'admin_key' => 'prohibited_if:role,user',
+        ]);
+
+        $this->assertTrue($result->isValid());
+    }
 }
