@@ -13,6 +13,8 @@ use Kode\Validation\Rule\ArrayRule;
 use Kode\Validation\Rule\BeforeRule;
 use Kode\Validation\Rule\BetweenRule;
 use Kode\Validation\Rule\BooleanRule;
+use Kode\Validation\Rule\ChineseAlphaNumRule;
+use Kode\Validation\Rule\ChineseRule;
 use Kode\Validation\Rule\ConfirmedRule;
 use Kode\Validation\Rule\DateRule;
 use Kode\Validation\Rule\DeclinedRule;
@@ -22,6 +24,7 @@ use Kode\Validation\Rule\DigitsRule;
 use Kode\Validation\Rule\DistinctRule;
 use Kode\Validation\Rule\EmailRule;
 use Kode\Validation\Rule\EndsWithRule;
+use Kode\Validation\Rule\EnglishRule;
 use Kode\Validation\Rule\ExcludeIfRule;
 use Kode\Validation\Rule\ExcludeUnlessRule;
 use Kode\Validation\Rule\FloatRule;
@@ -38,6 +41,7 @@ use Kode\Validation\Rule\MinRule;
 use Kode\Validation\Rule\NumericRule;
 use Kode\Validation\Rule\ProhibitedIfRule;
 use Kode\Validation\Rule\ProhibitedRule;
+use Kode\Validation\Rule\PureDigitsRule;
 use Kode\Validation\Rule\RegexRule;
 use Kode\Validation\Rule\RequiredIfRule;
 use Kode\Validation\Rule\RequiredRule;
@@ -46,9 +50,12 @@ use Kode\Validation\Rule\RequiredWithRule;
 use Kode\Validation\Rule\RuleInterface;
 use Kode\Validation\Rule\SameRule;
 use Kode\Validation\Rule\SizeRule;
+use Kode\Validation\Rule\SpecialCharsRule;
 use Kode\Validation\Rule\StartsWithRule;
+use Kode\Validation\Rule\StartWithEnglishRule;
 use Kode\Validation\Rule\StringRule;
 use Kode\Validation\Rule\UrlRule;
+use Kode\Validation\Rule\UsernameRule;
 
 /**
  * 核心验证器，协程安全
@@ -73,7 +80,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const VERSION = '1.4.0';
+    public const VERSION = '1.5.0';
 
     /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例
@@ -453,6 +460,13 @@ class Validator implements ValidatorInterface
             new RequiredWithRule(),
             new ExcludeIfRule(),
             new ExcludeUnlessRule(),
+            new ChineseRule(),
+            new EnglishRule(),
+            new PureDigitsRule(),
+            new SpecialCharsRule(),
+            new StartWithEnglishRule(),
+            new ChineseAlphaNumRule(),
+            new UsernameRule(),
         ];
 
         foreach ($builtinRules as $rule) {

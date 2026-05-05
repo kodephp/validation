@@ -1,6 +1,6 @@
 # kode/validation
 
-协程安全的 PHP 数据验证库，专为 kode framework 设计，支持 PHP 8.2+。
+协程安全的 PHP 数据验证库，支持 PHP 8.2+。
 
 ## 特性
 
@@ -501,18 +501,6 @@ for ($i = 1; $i <= 100; $i++) {
    43 个规则实现类...       │  + check() (static)      │
                             │  + validated() (static)  │
                             └──────────────────────────┘
-```
-
-## 版本历史
-
-| 版本 | 更新内容 |
-|------|----------|
-| v1.0.0 | 8 条基础规则 + 协程安全架构 |
-| v1.1.0 | +8 条规则 + sometimes/nullable + 通配符 |
-| v1.2.0 | +9 条规则 + stopOnFirstFailure |
-| v1.3.0 | +17 条规则 + beforeValidation + 条件排除 |
-| v1.3.1 | 移除 PHP 8.3 专属语法，兼容 8.2+ |
-| v1.4.0 | Trait + Helper + 框架集成 + 多进程/协程 |
 ```
 
 ## 许可证

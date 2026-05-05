@@ -1893,7 +1893,192 @@ class ValidatorTest extends TestCase
     public function testVERSION常量存在(): void
     {
         $this->assertTrue(defined(Validator::class . '::VERSION'));
-        $this->assertSame('1.4.0', Validator::VERSION);
+        $this->assertSame('1.5.0', Validator::VERSION);
+    }
+
+    // ==================== 中文规则 ====================
+
+    public function test中文规则包含中文通过(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三abc'],
+            ['name' => 'chinese']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test中文规则纯英文失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => 'HelloWorld'],
+            ['name' => 'chinese']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test中文规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => ''],
+            ['name' => 'chinese']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 纯英文规则 ====================
+
+    public function test纯英文规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'HelloWorld'],
+            ['code' => 'english']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test纯英文规则含数字失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'Hello123'],
+            ['code' => 'english']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 纯数字规则 ====================
+
+    public function test纯数字规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => '123456'],
+            ['code' => 'pure_digits']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test纯数字规则含字母失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => '123abc'],
+            ['code' => 'pure_digits']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 特殊字符规则 ====================
+
+    public function test特殊字符规则含默认字符通过(): void
+    {
+        $result = $this->validator->validate(
+            ['password' => 'abc@123'],
+            ['password' => 'special_chars']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test特殊字符规则不含特殊字符失败(): void
+    {
+        $result = $this->validator->validate(
+            ['password' => 'abc123'],
+            ['password' => 'special_chars']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test特殊字符规则自定义字符集(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => 'ABC#DEF'],
+            ['code' => 'special_chars:#']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 英文开头规则 ====================
+
+    public function test英文开头规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => 'user001'],
+            ['name' => 'start_with_english']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test英文开头规则以数字开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '001user'],
+            ['name' => 'start_with_english']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test英文开头规则以中文开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三user'],
+            ['name' => 'start_with_english']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 中英文数字组合规则 ====================
+
+    public function test中英文数字组合规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三Hello123'],
+            ['name' => 'chinese_alpha_num']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test中英文数字组合规则含特殊字符失败(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三@abc'],
+            ['name' => 'chinese_alpha_num']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 用户名规则 ====================
+
+    public function test用户名规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['username' => 'user_name_001'],
+            ['username' => 'username']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test用户名规则数字开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['username' => '001user'],
+            ['username' => 'username']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test用户名规则中文开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['username' => '张三user'],
+            ['username' => 'username']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test用户名规则下划线开头失败(): void
+    {
+        $result = $this->validator->validate(
+            ['username' => '_user'],
+            ['username' => 'username']
+        );
+        $this->assertFalse($result->isValid());
     }
 
     // ==================== 综合性 v1.3 场景 ====================
