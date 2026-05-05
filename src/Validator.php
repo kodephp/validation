@@ -29,17 +29,21 @@ use Kode\Validation\Rule\EnglishRule;
 use Kode\Validation\Rule\ExcludeIfRule;
 use Kode\Validation\Rule\ExcludeUnlessRule;
 use Kode\Validation\Rule\FloatRule;
+use Kode\Validation\Rule\FutureRule;
 use Kode\Validation\Rule\GtRule;
 use Kode\Validation\Rule\GteRule;
 use Kode\Validation\Rule\InRule;
 use Kode\Validation\Rule\IntegerRule;
 use Kode\Validation\Rule\IpRule;
 use Kode\Validation\Rule\JsonRule;
+use Kode\Validation\Rule\LengthRule;
 use Kode\Validation\Rule\LtRule;
 use Kode\Validation\Rule\LteRule;
+use Kode\Validation\Rule\MacAddressRule;
 use Kode\Validation\Rule\MaxRule;
 use Kode\Validation\Rule\MinRule;
 use Kode\Validation\Rule\NumericRule;
+use Kode\Validation\Rule\PastRule;
 use Kode\Validation\Rule\PrefixMixedRule;
 use Kode\Validation\Rule\ProhibitedIfRule;
 use Kode\Validation\Rule\ProhibitedRule;
@@ -56,8 +60,10 @@ use Kode\Validation\Rule\SpecialCharsRule;
 use Kode\Validation\Rule\StartsWithRule;
 use Kode\Validation\Rule\StartWithEnglishRule;
 use Kode\Validation\Rule\StringRule;
+use Kode\Validation\Rule\TimezoneRule;
 use Kode\Validation\Rule\UrlRule;
 use Kode\Validation\Rule\UsernameRule;
+use Kode\Validation\Rule\UuidRule;
 
 /**
  * 核心验证器，协程安全
@@ -82,7 +88,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const VERSION = '1.7.0';
+    public const VERSION = '1.8.0';
 
     /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例
@@ -471,6 +477,12 @@ class Validator implements ValidatorInterface
             new ClosureRule(function () {
                 return null;
             }),
+            new LengthRule(),
+            new UuidRule(),
+            new FutureRule(),
+            new PastRule(),
+            new TimezoneRule(),
+            new MacAddressRule(),
         ];
 
         foreach ($builtinRules as $rule) {

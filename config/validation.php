@@ -62,4 +62,10 @@ return [
     'username'        => ':attribute 必须以英文字母开头，后续只能使用字母、数字和下划线',
     'prefix_mixed'    => ':attribute 前 :param_0 位必须为英文字母，后续只能包含字母和数字',
     'closure'         => ':attribute 验证失败',
+    'length'          => ':attribute 长度必须为 :param_0 个字符',
+    'uuid'            => ':attribute 必须是有效的 UUID 格式',
+    'future'          => ':attribute 必须是未来的日期',
+    'past'            => ':attribute 必须是过去的日期',
+    'timezone'        => ':attribute 必须是有效的时区',
+    'mac_address'     => ':attribute 必须是有效的 MAC 地址',
 ];

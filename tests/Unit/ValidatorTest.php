@@ -1893,7 +1893,192 @@ class ValidatorTest extends TestCase
     public function testVERSION常量存在(): void
     {
         $this->assertTrue(defined(Validator::class . '::VERSION'));
-        $this->assertSame('1.7.0', Validator::VERSION);
+        $this->assertSame('1.8.0', Validator::VERSION);
+    }
+
+    // ==================== 精确长度规则 ====================
+
+    public function test精确长度规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => '123456'],
+            ['code' => 'length:6']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test精确长度规则中文长度正确计算(): void
+    {
+        $result = $this->validator->validate(
+            ['name' => '张三'],
+            ['name' => 'length:2']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test精确长度规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => '12345'],
+            ['code' => 'length:6']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test精确长度规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['code' => ''],
+            ['code' => 'length:6']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== UUID 规则 ====================
+
+    public function testUUID规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['id' => '550e8400-e29b-41d4-a716-446655440000'],
+            ['id' => 'uuid']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testUUID规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['id' => 'not-a-uuid'],
+            ['id' => 'uuid']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function testUUID规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['id' => ''],
+            ['id' => 'uuid']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== 未来日期规则 ====================
+
+    public function test未来日期规则验证通过(): void
+    {
+        $future = date('Y-m-d', strtotime('+1 year'));
+        $result = $this->validator->validate(
+            ['date' => $future],
+            ['date' => 'future']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test未来日期规则过去日期失败(): void
+    {
+        $result = $this->validator->validate(
+            ['date' => '2020-01-01'],
+            ['date' => 'future']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 过去日期规则 ====================
+
+    public function test过去日期规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['date' => '2020-01-01'],
+            ['date' => 'past']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test过去日期规则未来日期失败(): void
+    {
+        $future = date('Y-m-d', strtotime('+1 year'));
+        $result = $this->validator->validate(
+            ['date' => $future],
+            ['date' => 'past']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    // ==================== 时区规则 ====================
+
+    public function test时区规则验证通过(): void
+    {
+        $result = $this->validator->validate(
+            ['tz' => 'Asia/Shanghai'],
+            ['tz' => 'timezone']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function test时区规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['tz' => 'Invalid/Timezone'],
+            ['tz' => 'timezone']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function test时区规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['tz' => ''],
+            ['tz' => 'timezone']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    // ==================== MAC 地址规则 ====================
+
+    public function testMAC地址规则冒号格式通过(): void
+    {
+        $result = $this->validator->validate(
+            ['mac' => 'AA:BB:CC:DD:EE:FF'],
+            ['mac' => 'mac_address']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testMAC地址规则横杠格式通过(): void
+    {
+        $result = $this->validator->validate(
+            ['mac' => 'AA-BB-CC-DD-EE-FF'],
+            ['mac' => 'mac_address']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testMAC地址规则点号格式通过(): void
+    {
+        $result = $this->validator->validate(
+            ['mac' => 'AABB.CCDD.EEFF'],
+            ['mac' => 'mac_address']
+        );
+        $this->assertTrue($result->isValid());
+    }
+
+    public function testMAC地址规则验证失败(): void
+    {
+        $result = $this->validator->validate(
+            ['mac' => 'invalid-mac'],
+            ['mac' => 'mac_address']
+        );
+        $this->assertFalse($result->isValid());
+    }
+
+    public function testMAC地址规则跳过空值(): void
+    {
+        $result = $this->validator->validate(
+            ['mac' => ''],
+            ['mac' => 'mac_address']
+        );
+        $this->assertTrue($result->isValid());
     }
 
     // ==================== 中文规则 ====================
