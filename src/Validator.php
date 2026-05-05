@@ -82,7 +82,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const VERSION = '1.6.0';
+    public const VERSION = '1.7.0';
 
     /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例

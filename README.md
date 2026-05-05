@@ -543,46 +543,6 @@ $validator = new Validator(require 'config/validation.php');
                             └──────────────────────────┘
 ```
 
-## 版本历史
-
-### v1.6.0（当前版本）
-- 新增 `prefix_mixed` 规则：前N位英文+后缀混合
-- 新增 `ClosureRule`：支持内联闭包自定义规则
-- 增强 `parseRules()`：数组规则中可直接传入闭包
-- 修复 `#[\Override]` PHP 8.3 语法，确保 8.2+ 兼容
-- 215 个测试，448 个断言
-
-### v1.5.0
-- 新增 7 条规则：`chinese`、`english`、`pure_digits`、`special_chars`、`start_with_english`、`chinese_alpha_num`、`username`
-- 200 个测试
-
-### v1.4.0
-- 新增 `ValidatesRequests` Trait
-- 新增 `ValidationHelper` 静态 Helper
-- 支持 `validateThrows()` 和 `validateWithResult()`
-- 框架集成能力完善
-
-### v1.3.0
-- 新增 35 条规则，覆盖类型/范围/日期/比较/条件等全场景
-- 新增 `sometimes` / `nullable` 控制规则
-- 新增 `exclude_if` / `exclude_unless` 排除规则
-- 新增前置回调 `beforeValidation()`
-- 通配符支持 `items.*.name`
-
-### v1.2.0
-- 新增 `json`、`array`、`boolean` 类型规则
-- 新增 `starts_with`、`ends_with`、`after`、`before` 规则
-- 新增 `prohibited` / `prohibited_if` 禁止规则
-
-### v1.1.0
-- 新增 `url`、`ip`、`numeric`、`alpha`、`alpha_num`、`date`、`same`、`different` 规则
-- 修复 `isset()` 对 null 值误判问题
-
-### v1.0.0
-- 初始版本：8 条基础规则
-- 协程安全架构设计
-- 管道规则表达式
-
 ## 许可证
 
 MIT License. 详见 [LICENSE](LICENSE) 文件。
