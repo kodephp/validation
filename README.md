@@ -364,39 +364,155 @@ cp vendor/kode/validation/config/validation.php config/validation.php
 $validator = new Validator(require 'config/validation.php');
 ```
 
+## 框架集成
+
+支持在 Controller、Model、Service、View 等框架各层中直接使用，无需额外封装。
+
+### 方式一：ValidatesRequests Trait
+
+将 Trait 引入任何类，即可获得验证能力：
+
+```php
+use Kode\Validation\Trait\ValidatesRequests;
+
+class UserController
+{
+    use ValidatesRequests;
+
+    public function store(array $request): array
+    {
+        $validated = $this->validateThrows($request, [
+            'name'  => 'required|min:2|max:20',
+            'email' => 'required|email',
+            'role'  => 'required|in:user,admin',
+        ]);
+        return User::create($validated);
+    }
+
+    public function update(array $request): array
+    {
+        $result = $this->validateWithResult($request, [
+            'name'  => 'sometimes|min:2|max:20',
+            'email' => 'sometimes|email',
+        ]);
+        if (!$result['valid']) {
+            return ['code' => 422, 'errors' => $result['errors']];
+        }
+        return ['code' => 200, 'data' => updateUser($result['data'])];
+    }
+}
+```
+
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| `validateRequest()` | `ValidationResult` | 返回标准结果对象 |
+| `validateThrows()` | `array` | 失败抛异常，成功返回数据 |
+| `validateWithResult()` | `array` | 返回 `['valid','data','errors']` |
+| `setValidator()` | `void` | 注入自定义验证器 |
+
+### 方式二：ValidationHelper 静态方法
+
+```php
+use Kode\Validation\Helper\ValidationHelper;
+
+$result = ValidationHelper::check($data, $rules);
+$data = ValidationHelper::validated($data, $rules); // 失败返回 null
+```
+
+### 方式三：Validator 直接使用
+
+```php
+$validator = new Validator(require 'config/validation.php');
+$data = $validator->stopOnFirstFailure()->validateThrows($data, $rules);
+```
+
+## 多进程 / 多线程 / 协程安全
+
+| 场景 | 安全性 | 说明 |
+|------|--------|------|
+| 协程（Fiber） | ✅ 安全 | 无实例可变状态，全部局部变量 |
+| 多线程（parallel） | ✅ 安全 | Rule 类无状态，可跨线程共享 |
+| 多进程（pcntl_fork） | ✅ 安全 | 独立内存空间，天然隔离 |
+| Swoole/Swow 协程 | ✅ 安全 | 不依赖全局/静态可变状态 |
+| Trait 复用 | ✅ 安全 | 每次调用独立结果对象 |
+
+```php
+for ($i = 1; $i <= 100; $i++) {
+    $fiber = new Fiber(function () use ($validator, $i) {
+        return $validator->validate(
+            ['id' => $i], ['id' => 'required|integer']
+        )->isValid();
+    });
+    $fiber->start();
+}
+// 100 个协程并发，结果互不干扰
+```
+
+## 完整规则（43 条）
+
+| 规则 | 类型 | 说明 |
+|------|------|------|
+| `required` | 基础 | 必填（null/''/[] 不通过） |
+| `sometimes` | 控制 | 字段存在时才验证 |
+| `nullable` | 控制 | 字段为 null 时跳过 |
+| `confirmed` | 关系 | 需 `_confirmation` 字段匹配 |
+| `accepted` / `declined` | 基础 | 接受/拒绝 |
+| `prohibited` / `prohibited_if` | 禁止 | 字段禁止存在 |
+| `string` / `integer` / `float` / `numeric` / `boolean` / `array` | 类型 | 类型验证 |
+| `min` / `max` / `between` / `size` / `in` | 范围 | 范围/枚举 |
+| `email` / `url` / `ip` / `json` / `regex` | 格式 | 格式验证 |
+| `date` / `after` / `before` | 日期 | 日期与比较 |
+| `alpha` / `alpha_num` / `distinct` | 内容 | 内容验证 |
+| `starts_with` / `ends_with` | 内容 | 前后缀 |
+| `digits` / `digits_between` | 格式 | 数字位数 |
+| `gt` / `gte` / `lt` / `lte` | 比较 | 字段间比较 |
+| `same` / `different` | 关系 | 字段异同 |
+| `required_if` / `required_unless` / `required_with` | 条件 | 条件必填 |
+| `exclude_if` / `exclude_unless` | 条件 | 条件排除 |
+
 ## 类图
 
 ```
 ┌─────────────────────┐     ┌──────────────────────────┐
 │  ValidatorInterface │     │ValidationResultInterface │
-│  ─────────────────── │     │  ────────────────────────│
 │  + validate()       │     │  + isValid()             │
-└──────────┬──────────┘     │  + errors()              │
-           │                │  + validatedData()       │
-           ▼                └─────────────┬────────────┘
-┌─────────────────────┐                  │
-│     Validator       │                  ▼
-│  ─────────────────── │     ┌──────────────────────────┐
-│  - rules: array      │────▶│   ValidationResult       │
-│  - defaultMessages   │     │  ────────────────────────│
-│  ─────────────────── │     │  - valid: bool           │
-│  + validate()        │     │  - errors: array         │
-│  + addRule()         │     │  - validatedData: array  │
-│  - parseRules()      │     └──────────────────────────┘
-│  - formatMessage()   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│   RuleInterface     │
-│  ─────────────────── │
-│  + validate()       │
+│  + validateThrows() │     │  + errors()              │
+└──────────┬──────────┘     │  + validatedData()       │
+           │                └─────────────┬────────────┘
+           ▼                              │
+┌─────────────────────┐                  ▼
+│     Validator       │     ┌──────────────────────────┐
+│  VERSION = '1.4.0'  │────▶│   ValidationResult       │
+│  - 43条内置规则     │     │  (readonly)               │
+│  + validate()        │     │  - valid: bool           │
+│  + validateThrows()  │     │  - errors: array         │
+│  + stopOnFirstFail() │     │  - validatedData: array  │
+│  + beforeValidation()│     └──────────────────────────┘
+│  + addRule()         │
+└──────────┬──────────┘     ┌──────────────────────────┐
+           │                │  Trait\ValidatesRequests │
+           ▼                │  + validateRequest()     │
+┌─────────────────────┐     │  + validateThrows()      │
+│   RuleInterface     │     │  + validateWithResult()  │
+│  + validate()       │     └──────────────────────────┘
 │  + getName()        │
-└──────────┬──────────┘
-           │
-  ┌────────┼────────┬────────┬─────────┬─────────┬────────┬───────┐
-  ▼        ▼        ▼        ▼         ▼         ▼        ▼       ▼
-Required Email    Min     Max     Between     In      Regex  Confirmed
+└──────────┬──────────┘     ┌──────────────────────────┐
+           │                │  Helper\ValidationHelper │
+   43 个规则实现类...       │  + check() (static)      │
+                            │  + validated() (static)  │
+                            └──────────────────────────┘
+```
+
+## 版本历史
+
+| 版本 | 更新内容 |
+|------|----------|
+| v1.0.0 | 8 条基础规则 + 协程安全架构 |
+| v1.1.0 | +8 条规则 + sometimes/nullable + 通配符 |
+| v1.2.0 | +9 条规则 + stopOnFirstFailure |
+| v1.3.0 | +17 条规则 + beforeValidation + 条件排除 |
+| v1.3.1 | 移除 PHP 8.3 专属语法，兼容 8.2+ |
+| v1.4.0 | Trait + Helper + 框架集成 + 多进程/协程 |
 ```
 
 ## 许可证

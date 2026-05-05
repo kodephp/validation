@@ -73,7 +73,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const VERSION = '1.3.1';
+    public const VERSION = '1.4.0';
 
     /**
      * @var array<string, RuleInterface> 已注册的规则映射，规则名 => 规则实例
@@ -159,6 +159,28 @@ class Validator implements ValidatorInterface
         }
 
         return new ValidationResult($allErrors === [], $allErrors, $validatedData);
+    }
+
+    /**
+     * 验证数据，失败时抛出异常，成功时返回通过的数据
+     *
+     * 适用于 Controller / Service 中"不通过则终止"的场景。
+     *
+     * @param array $data     待验证数据
+     * @param array $rules    验证规则
+     * @param array $messages 自定义错误消息
+     * @return array 通过验证的数据
+     * @throws Exception\ValidationException 验证失败时抛出
+     */
+    public function validateThrows(array $data, array $rules, array $messages = []): array
+    {
+        $result = $this->validate($data, $rules, $messages);
+
+        if (!$result->isValid()) {
+            throw new Exception\ValidationException($result);
+        }
+
+        return $result->validatedData();
     }
 
     /**
