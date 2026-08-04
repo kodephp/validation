@@ -6,8 +6,10 @@ declare(strict_types=1);
  * kode/validation 默认错误消息模板
  *
  * 占位符说明：
- *   :attribute  - 字段名（支持别名）
+ *   :attribute  - 字段显示名（支持别名与通配符映射）
+ *   :field      - 原始字段名
  *   :value      - 字段当前值
+ *   :params     - 全部参数，以「, 」连接
  *   :param_0    - 规则第一个参数
  *   :param_1    - 规则第二个参数
  */
@@ -68,4 +70,41 @@ return [
     'past'            => ':attribute 必须是过去的日期',
     'timezone'        => ':attribute 必须是有效的时区',
     'mac_address'     => ':attribute 必须是有效的 MAC 地址',
+
+    // v1.9.0 新增：中国本地化
+    'mobile'          => ':attribute 不是有效的手机号码',
+    'id_card'         => ':attribute 不是有效的身份证号码',
+    'bank_card'       => ':attribute 不是有效的银行卡号',
+    'postal_code'     => ':attribute 不是有效的邮政编码',
+    'chinese_name'    => ':attribute 不是有效的中文姓名',
+    'plate_number'    => ':attribute 不是有效的车牌号码',
+
+    // v1.9.0 新增：通用格式
+    'ulid'            => ':attribute 必须是有效的 ULID',
+    'semver'          => ':attribute 必须是有效的语义化版本号',
+    'base64'          => ':attribute 必须是有效的 Base64 字符串',
+    'hex_color'       => ':attribute 必须是有效的十六进制颜色值',
+    'slug'            => ':attribute 只能包含小写字母、数字和连字符',
+    'ipv4'            => ':attribute 不是有效的 IPv4 地址',
+    'ipv6'            => ':attribute 不是有效的 IPv6 地址',
+    'port'            => ':attribute 必须是 1-65535 之间的端口号',
+    'domain'          => ':attribute 不是有效的域名',
+    'latitude'        => ':attribute 必须是 -90 到 90 之间的纬度值',
+    'longitude'       => ':attribute 必须是 -180 到 180 之间的经度值',
+    'ascii'           => ':attribute 只能包含可打印的 ASCII 字符',
+    'lowercase'       => ':attribute 必须全部为小写',
+    'uppercase'       => ':attribute 必须全部为大写',
+
+    // v1.9.0 新增：逻辑与条件
+    'not_in'            => ':attribute 不能使用该值',
+    'not_regex'         => ':attribute 格式不符合要求',
+    'filled'            => ':attribute 提交时不能为空',
+    'present'           => ':attribute 字段必须存在',
+    'missing'           => ':attribute 字段不允许提交',
+    'multiple_of'       => ':attribute 必须是 :param_0 的倍数',
+    'date_format'       => ':attribute 必须符合 :param_0 格式',
+    'enum'              => ':attribute 不在允许的枚举值范围内',
+    'contains'          => ':attribute 必须包含 :params',
+    'doesnt_start_with' => ':attribute 不能以 :params 开头',
+    'doesnt_end_with'   => ':attribute 不能以 :params 结尾',
 ];

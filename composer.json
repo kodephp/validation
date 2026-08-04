@@ -2,9 +2,9 @@
     "name": "kode/validation",
     "description": "协程安全的数据验证库 for kode framework",
     "type": "library",
-    "version": "1.8.0",
+    "version": "1.9.0",
     "license": "MIT",
-    "keywords": ["kode", "validation", "validator", "coroutine", "fiber"],
+    "keywords": ["kode", "validation", "validator", "coroutine", "fiber", "php83"],
     "authors": [
         {
             "name": "KodePHP",
@@ -12,7 +12,7 @@
         }
     ],
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.3",
         "kode/context": "^1.0"
     },
     "require-dev": {

@@ -1,20 +1,21 @@
 # kode/validation
 
-协程安全的 PHP 数据验证库，支持 PHP 8.2+。
+协程安全的 PHP 数据验证库，支持 PHP 8.3+（类型化类常量、`#[\Override]`、`json_validate()`）。
 
 ## 特性
 
 - **协程安全**：所有验证过程使用局部变量，多 Fiber 并发互不干扰
 - **管道规则**：`required|email|min:5|max:100` 直观的规则表达式
-- **50+ 内置规则**：覆盖中英文、特殊字符、用户名、类型、格式、范围、比较等全场景
+- **88 内置规则**：覆盖中英文、特殊字符、用户名、类型、格式、范围、比较、中国本地化（手机号 / 身份证 / 银行卡 / 车牌 / 邮编 / 中文名）等全场景；其中 **31 条为 v1.9.0 新增**
 - **闭包自定义规则**：支持内联闭包和 `addRule()` 动态注册
 - **中文错误消息**：默认中文模板，完整的字段别名和占位符支持
-- **只读结果对象**：不可变设计，安全传递
+- **只读结果对象**：不可变设计，安全传递，并实现 `Countable` / `JsonSerializable`
+- **性能优化**：内置规则进程级共享实例池、字符串规则串解析缓存（带上限防膨胀）、闭包规则 `WeakMap` 缓存
 - **多框架集成**：Trait / Helper / Validator 三种方式适配任何框架
 
 ## 环境要求
 
-- PHP >= 8.2
+- PHP >= 8.3
 
 ## 安装
 
@@ -31,7 +32,8 @@ declare(strict_types=1);
 
 use Kode\Validation\Validator;
 
-$validator = new Validator(require 'vendor/kode/validation/config/validation.php');
+// Validator::create() 自动加载内置中文消息模板（config/validation.php）
+$validator = Validator::create();
 
 $data = [
     'name'  => '张三',
@@ -54,7 +56,9 @@ if ($result->isValid()) {
 }
 ```
 
-## 内置规则速查（50 条）
+## 内置规则速查（88 条）
+
+> 下表为历史规则；**v1.9.0 新增的 31 条规则**请见 [新增规则（v1.9.0）](#新增规则v190共-31-条) 一节。
 
 ### 基础验证
 | 规则 | 格式 | 说明 |
@@ -72,7 +76,7 @@ if ($result->isValid()) {
 | `numeric` | `numeric` | 数字（整型/浮点/数字串） |
 | `boolean` | `boolean` | 布尔类型 |
 | `array` | `array` | 数组类型 |
-| `json` | `json` | JSON 格式 |
+| `json` | `json` | JSON 格式（使用 `json_validate()`） |
 
 ### 范围与枚举
 | 规则 | 格式 | 说明 |
@@ -82,6 +86,7 @@ if ($result->isValid()) {
 | `between` | `between:最小值,最大值` | 区间范围（含边界） |
 | `size` | `size:值` | 精确等于 |
 | `in` | `in:值1,值2,值3` | 枚举值（严格类型比较） |
+| `length` | `length:长度` | 精确字符长度（mb_strlen 计算） |
 
 ### 格式验证
 | 规则 | 格式 | 说明 |
@@ -89,10 +94,15 @@ if ($result->isValid()) {
 | `email` | `email` | 邮箱格式 |
 | `url` | `url` | URL 地址 |
 | `ip` | `ip` | IPv4/IPv6 |
-| `regex` | `regex:/正则/` | 正则表达式 |
+| `regex` | `regex:/正则/` | 正则表达式（参数整体保留，不被逗号截断） |
 | `date` | `date` 或 `date:Y-m-d` | 日期格式 |
 | `digits` | `digits:位数` | 精确数字位数 |
 | `digits_between` | `digits_between:最小,最大` | 数字位数区间 |
+| `uuid` | `uuid` | UUID 格式（v1-v5） |
+| `mac_address` | `mac_address` | MAC 地址（三种格式） |
+| `timezone` | `timezone` | 有效时区标识符 |
+| `future` | `future` | 未来日期 |
+| `past` | `past` | 过去日期 |
 
 ### 内容验证
 | 规则 | 格式 | 说明 |
@@ -145,6 +155,89 @@ if ($result->isValid()) {
 | `exclude_if` | `exclude_if:字段,值` | 条件下排除字段 |
 | `exclude_unless` | `exclude_unless:字段,值` | 条件不满足时排除字段 |
 
+## 新增规则（v1.9.0，共 31 条）
+
+### 中国本地化验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `mobile` | `mobile` | 中国大陆手机号（1[3-9] 开头，11 位） |
+| `id_card` | `id_card` | 身份证号（18 位，校验位 + 出生日期合法性，基于 `checkdate`） |
+| `bank_card` | `bank_card` | 银行卡号（Luhn 校验） |
+| `postal_code` | `postal_code` | 中国邮政编码（6 位数字） |
+| `chinese_name` | `chinese_name` | 中文姓名（2-8 位汉字，支持间隔号 `·`） |
+| `plate_number` | `plate_number` | 车牌号（传统 + 新能源，普通/教练/挂/警/使馆等） |
+
+```php
+['phone' => 'required|mobile']
+// '13812345678'  → 通过
+// '12345678901'  → 失败
+
+['id' => 'required|id_card']
+// '11010519491231002X' → 通过（含校验位）
+// '440524188001010014' → 失败（校验位不合法）
+
+['plate' => 'plate_number']
+// '京A12345' / '粤BD12345'（新能源） / '沪A1234挂' → 通过
+// 'ABC1234' / '京A1234I' → 失败
+```
+
+### 通用格式验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `ascii` | `ascii` | 仅 ASCII 可打印字符 |
+| `base64` | `base64` | 合法 Base64 编码 |
+| `hex_color` | `hex_color` | 十六进制颜色（`#RGB` / `#RRGGBB`） |
+| `slug` | `slug` | URL slug（小写字母、数字、连字符） |
+| `ulid` | `ulid` | ULID 标识符（26 位 Crockford Base32） |
+| `semver` | `semver` | 语义化版本号（SemVer 2.0.0） |
+| `domain` | `domain` | 域名（含多级子域与 IDN 兼容） |
+| `ipv4` | `ipv4` | 仅 IPv4 地址 |
+| `ipv6` | `ipv6` | 仅 IPv6 地址 |
+| `port` | `port` | 端口号（0-65535，整数） |
+| `latitude` | `latitude` | 纬度（-90 ~ 90） |
+| `longitude` | `longitude` | 经度（-180 ~ 180） |
+| `lowercase` | `lowercase` | 全小写 |
+| `uppercase` | `uppercase` | 全大写 |
+| `date_format` | `date_format:Y-m-d` | 按指定格式校验日期（参数整体保留） |
+| `not_regex` | `not_regex:/正则/` | 不匹配指定正则（参数整体保留） |
+| `enum` | `enum:ClassName` | 枚举成员（支持 Backed Enum 的 `tryFrom`） |
+
+```php
+['color' => 'hex_color']
+// '#fff' / '#1a2b3c' → 通过
+// 'red' / '#12345' → 失败
+
+['ver' => 'semver']
+// '1.9.0' / '2.0.0-rc.1' → 通过
+
+['status' => 'enum:App\Enums\OrderStatus']
+// 传入 OrderStatus::Paid 的 value → 通过
+// 不在枚举成员中 → 失败
+```
+
+### 逻辑与存在性验证
+| 规则 | 格式 | 说明 |
+|------|------|------|
+| `not_in` | `not_in:值1,值2` | 不在枚举值中（严格类型比较） |
+| `multiple_of` | `multiple_of:3` | 为某数的整数倍 |
+| `contains` | `contains:子串` | 字符串包含指定子串 |
+| `doesnt_start_with` | `doesnt_start_with:前缀` | 不以某值开头 |
+| `doesnt_end_with` | `doesnt_end_with:后缀` | 不以某值结尾 |
+| `filled` | `filled` | 字段存在且非空（非 null/''/[]） |
+| `present` | `present` | 字段必须存在（值可为空） |
+| `missing` | `missing` | 字段必须不存在 |
+
+```php
+['tags' => 'contains:news']
+// 'news-hot' → 通过； 'old' → 失败
+
+['note' => 'filled']
+// 'hello' → 通过； '' / 未提交 → 失败
+
+['token' => 'missing']
+// 未提供 token → 通过； 提供 → 失败
+```
+
 ## 规则详解
 
 ### min / max — 中文长度正确计算
@@ -175,7 +268,7 @@ if ($result->isValid()) {
 
 ```php
 ['password' => 'special_chars']
-// 默认检查: !@#$%^&*()-_=+[]{}|;:'",.<>?/\`~
+// 默认检查: !@#$%^&*()-_=+[]{}|;:'",.<>?/`~
 
 ['code' => 'special_chars:#']
 // 只检查是否包含 #
@@ -281,6 +374,11 @@ $messages = [
 | `:value` | 字段当前值 |
 | `:param_0` | 规则第 1 个参数 |
 | `:param_1` | 规则第 2 个参数 |
+| `:field` | 当前字段原始键名（如 `users.0.name`，通配符场景尤其有用） |
+| `:params` | 规则全部参数拼接（逗号分隔） |
+
+> 通配符字段（如 `users.*.name`）的错误消息支持用 `users.*.name.required` 形式集中配置，`*`
+> 会自动匹配任意下标。
 
 ## 规则定义格式
 
@@ -313,14 +411,28 @@ $rules = [
 
 ## 验证结果
 
-`ValidationResult` 是只读对象：
+`ValidationResult` 是只读对象，并实现 `Countable`（可用 `count()`）与 `JsonSerializable`（可 `json_encode`）。
 
 ```php
 $result = $validator->validate($data, $rules);
 
 $result->isValid();        // bool: 全部通过为 true
+$result->fails();          // bool: 与 isValid() 相反
 $result->errors();         // array: ['字段' => ['规则' => '消息']]
-$result->validatedData();  // array: 仅通过验证的字段
+$result->validatedData();  // array: 仅通过验证的字段（未提交字段不会混入）
+$result->first();          // ?string: 第一条错误消息（可传字段名取该字段首错）
+$result->first('email');   // ?string: email 字段的首条错误
+$result->has('email');     // bool: 是否存在该字段错误
+$result->get('email');     // array: 该字段全部错误
+$result->messages();       // array: 扁平化消息列表 ['字段.规则' => 消息]
+$result->flatten();        // array: 纯消息字符串列表
+$result->failedRules();    // array: ['字段' => ['规则', ...]]
+$result->invalidFields();  // array: 失败字段名列表
+$result->only(['a','b']);  // array: 仅保留指定字段的验证数据
+$result->except(['c']);    // array: 排除指定字段的验证数据
+$result->toArray();        // array: 结构化结果 ['valid','errors','validatedData']
+count($result);            // int: 错误总数
+json_encode($result);      // JSON: 序列化后的结果
 ```
 
 ### 部分验证结果
@@ -336,6 +448,70 @@ $result->errors();   // ['email' => ['email' => 'email 不是有效的邮箱地�
 $result->validatedData();  // ['name' => '张三']
 ```
 
+## 高级用法（v1.9.0）
+
+### 工厂方法 Validator::create()
+
+自动加载内置中文消息模板，无需手动 `require` 配置文件：
+
+```php
+$validator = Validator::create();                       // 内置模板
+$validator = Validator::create($myMessages);            // 自定义模板
+```
+
+### 前置 / 后置回调
+
+```php
+$validator
+    ->beforeValidation(function (array $data, array $rules): array {
+        // 验证前统一 trim / 规整数据
+        return [$data, $rules];
+    })
+    ->afterValidation(function (\Kode\Validation\ValidationResult $result, array $data): ?\Kode\Validation\ValidationResult {
+        // 校验通过后追加业务级校验
+        return null; // 返回 null 保留原结果；返回新结果则覆盖
+    });
+```
+
+### 字段显示名与动态消息 / 规则
+
+```php
+$validator
+    ->setAttributeNames(['user_email' => '用户邮箱', 'users.*.name' => '成员姓名'])
+    ->addMessages(['mobile.mobile' => ':attribute 格式不正确'])
+    ->addRules(['is_even' => fn ($f, $v, $p, $d) => ((int)$v % 2 === 0 ? null : '需为偶数')])
+    ->hasRule('mobile')   // true
+    ->ruleNames();        // 全部已注册规则名数组
+```
+
+### 流程控制指令
+
+`sometimes` / `nullable` / `bail` 为纯流程控制，不产生错误：
+- `bail`：遇到该字段首个错误即停止后续规则（首次错误即返回的语义同样适用于 `stopOnFirstFailure()`）。
+- `stopOnFirstFailure()`：全局级短路，首个字段的首个错误出现即返回（现已在通配符分支内同样生效，修复旧版 bug）。
+
+### 静态缓存清理
+
+内置规则实例池 / 解析缓存 / 闭包缓存在常驻进程（Swoole/Swow）中共享。
+如需在测试或热重载时重置：
+
+```php
+Validator::flushCaches();
+```
+
+### 异常用法
+
+`ValidationException` 构造时默认取首条错误作为消息，并提供 `messages()` / `first()`：
+
+```php
+try {
+    $data = $validator->validateThrows($data, $rules);
+} catch (\Kode\Validation\Exception\ValidationException $e) {
+    echo $e->first();        // 首条错误
+    print_r($e->messages()); // 全部消息
+}
+```
+
 ## 实际应用
 
 ### 用户注册
@@ -347,11 +523,13 @@ $data = [
     'password'              => 'Secret123!',
     'password_confirmation' => 'Secret123!',
     'age'                   => 25,
+    'mobile'                => '13812345678',
 ];
 
 $rules = [
     'username' => 'required|min:3|max:20|username',
     'email'    => 'required|email',
+    'mobile'   => 'required|mobile',
     'password' => 'required|min:6|confirmed',
     'age'      => 'required|between:18,100',
 ];
@@ -359,6 +537,7 @@ $rules = [
 $messages = [
     'username.attribute' => '用户名',
     'email.attribute'    => '邮箱',
+    'mobile.attribute'   => '手机号',
     'password.attribute' => '密码',
 ];
 
@@ -394,7 +573,7 @@ $result = $validator->validate($data, $rules);
 ```php
 function handleCreateUser(array $request): array
 {
-    $validator = new Validator(require 'config/validation.php');
+    $validator = Validator::create();
 
     $result = $validator->validate($request, [
         'name'  => 'required|min:2|max:50',
@@ -474,13 +653,17 @@ class UserController
 use Kode\Validation\Helper\ValidationHelper;
 
 $result = ValidationHelper::check($data, $rules);
-$data = ValidationHelper::validated($data, $rules);
+$data   = ValidationHelper::validated($data, $rules);
+// v1.9.0 新增：
+$ok     = ValidationHelper::passes($data, $rules);   // bool
+$msg    = ValidationHelper::firstError($data, $rules); // ?string 首错
+ValidationHelper::reset();                            // 重置内部共享实例
 ```
 
 ### 方式三：Validator 直接使用
 
 ```php
-$validator = new Validator(require 'config/validation.php');
+$validator = Validator::create();
 $data = $validator->stopOnFirstFailure()->validateThrows($data, $rules);
 ```
 
@@ -499,6 +682,12 @@ $app->bind(ValidatorInterface::class, Validator::class);
 | 多进程（pcntl_fork） | ✅ 安全 | 独立内存空间，天然隔离 |
 | Swoole/Swow 协程 | ✅ 安全 | 不依赖全局/静态可变状态 |
 | Trait 复用 | ✅ 安全 | 每次调用独立结果对象 |
+
+## 性能优化说明（v1.9.0）
+
+- **共享规则实例池**：内置 88 条规则无状态，进程级惰性实例化并缓存，重复验证几乎零构造开销（基准：2 万次构造从 ~116ms 降至 ~2ms）。
+- **字符串规则串解析缓存**：`'a|b:c'` 形式的规则串解析结果按原文缓存，上限 `PARSE_CACHE_LIMIT = 1024`，超量整体重置以防长驻进程内存膨胀。
+- **闭包规则 `WeakMap` 缓存**：闭包规则以 `\WeakMap` 缓存，闭包被 GC 后自动释放，避免内存持续增长。
 
 ## 自定义默认消息
 
@@ -522,24 +711,27 @@ $validator = new Validator(require 'config/validation.php');
            ▼                              │
 ┌─────────────────────┐                  ▼
 │     Validator       │     ┌──────────────────────────┐
-│  VERSION = '1.6.0'  │────▶│   ValidationResult       │
-│  - 50条内置规则     │     │  (readonly)               │
+│  VERSION = '1.9.0'  │────▶│   ValidationResult       │
+│  - 88条内置规则     │     │  (readonly)               │
 │  + validate()        │     │  - valid: bool           │
 │  + validateThrows()  │     │  - errors: array         │
 │  + stopOnFirstFail() │     │  - validatedData: array  │
+│  + create()          │     │  + fails()/first()/...   │
 │  + beforeValidation()│     └──────────────────────────┘
-│  + addRule()         │
-└──────────┬──────────┘     ┌──────────────────────────┐
-           │                │  Trait\ValidatesRequests │
-           ▼                │  + validateRequest()     │
-┌─────────────────────┐     │  + validateThrows()      │
-│   RuleInterface     │     │  + validateWithResult()  │
-│  + validate()       │     └──────────────────────────┘
-│  + getName()        │
-└──────────┬──────────┘     ┌──────────────────────────┐
-           │                │  Helper\ValidationHelper │
-   50 个规则实现类...       │  + check() (static)      │
-                            │  + validated() (static)  │
+│  + afterValidation() │
+│  + setAttributeNames()│    ┌──────────────────────────┐
+│  + addMessages()      │    │  Trait\ValidatesRequests │
+│  + addRules()         │    │  + validateRequest()     │
+│  + hasRule()/ruleNames()│   │  + validateThrows()      │
+│  + flushCaches()      │    │  + validateWithResult()  │
+└──────────┬──────────┘     └──────────────────────────┘
+           │
+┌─────────────────────┐     ┌──────────────────────────┐
+│   RuleInterface     │     │  Helper\ValidationHelper │
+│  + validate()       │     │  + check() (static)      │
+│  + getName()        │     │  + validated() (static)  │
+└──────────┬──────────┘     │  + passes()/firstError() │
+   88 个规则实现类...        │  + reset() (static)      │
                             └──────────────────────────┘
 ```
 

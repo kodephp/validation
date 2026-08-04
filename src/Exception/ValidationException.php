@@ -16,12 +16,14 @@ use RuntimeException;
 class ValidationException extends RuntimeException
 {
     /**
-     * @param ValidationResult $result 验证结果
+     * @param ValidationResult $result  验证结果
+     * @param string|null      $message 异常消息，默认取首条错误
      */
     public function __construct(
-        private readonly ValidationResult $result
+        private readonly ValidationResult $result,
+        ?string $message = null
     ) {
-        parent::__construct('数据验证失败');
+        parent::__construct($message ?? $result->first() ?? '数据验证失败');
     }
 
     /**
@@ -42,5 +44,23 @@ class ValidationException extends RuntimeException
     public function errors(): array
     {
         return $this->result->errors();
+    }
+
+    /**
+     * 获取按字段归并的错误消息
+     *
+     * @return array<string, list<string>>
+     */
+    public function messages(): array
+    {
+        return $this->result->messages();
+    }
+
+    /**
+     * 获取第一条错误消息
+     */
+    public function first(?string $field = null): ?string
+    {
+        return $this->result->first($field);
     }
 }

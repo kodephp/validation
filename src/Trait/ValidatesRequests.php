@@ -49,16 +49,7 @@ trait ValidatesRequests
      */
     protected function getValidator(): ValidatorInterface
     {
-        if ($this->validationValidator === null) {
-            $messages = [];
-            $configPath = dirname(__DIR__, 2) . '/config/validation.php';
-            if (file_exists($configPath)) {
-                $messages = require $configPath;
-            }
-            $this->validationValidator = new Validator($messages);
-        }
-
-        return $this->validationValidator;
+        return $this->validationValidator ??= Validator::create();
     }
 
     /**

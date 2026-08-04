@@ -11,6 +11,7 @@ namespace Kode\Validation\Rule;
  */
 class AcceptedRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         $acceptable = ['yes', 'on', '1', 1, true];
@@ -22,6 +23,7 @@ class AcceptedRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'accepted';

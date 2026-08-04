@@ -12,6 +12,7 @@ namespace Kode\Validation\Rule;
  */
 class ExcludeUnlessRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         $otherField = $params[0] ?? '';
@@ -30,6 +31,7 @@ class ExcludeUnlessRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'exclude_unless';

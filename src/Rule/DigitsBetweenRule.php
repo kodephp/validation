@@ -12,6 +12,7 @@ namespace Kode\Validation\Rule;
  */
 class DigitsBetweenRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -34,6 +35,7 @@ class DigitsBetweenRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'digits_between';

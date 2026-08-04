@@ -23,3 +23,7 @@
 # 操作系统
 .DS_Store
 Thumbs.db
+
+# 本地工作区数据（不传仓库）
+.workbuddy/
+CHANGELOG.md

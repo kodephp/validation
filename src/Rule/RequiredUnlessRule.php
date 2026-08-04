@@ -12,6 +12,7 @@ namespace Kode\Validation\Rule;
  */
 class RequiredUnlessRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         $otherField = $params[0] ?? '';
@@ -32,6 +33,7 @@ class RequiredUnlessRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'required_unless';

@@ -34,16 +34,7 @@ final class ValidationHelper
      */
     private static function getInstance(): ValidatorInterface
     {
-        if (self::$instance === null) {
-            $messages = [];
-            $configPath = dirname(__DIR__, 2) . '/config/validation.php';
-            if (file_exists($configPath)) {
-                $messages = require $configPath;
-            }
-            self::$instance = new Validator($messages);
-        }
-
-        return self::$instance;
+        return self::$instance ??= Validator::create();
     }
 
     /**
@@ -75,6 +66,31 @@ final class ValidationHelper
     }
 
     /**
+     * 快速判断数据是否通过验证
+     *
+     * @param array $data     待验证数据
+     * @param array $rules    验证规则
+     * @param array $messages 自定义错误消息
+     */
+    public static function passes(array $data, array $rules, array $messages = []): bool
+    {
+        return self::getInstance()->validate($data, $rules, $messages)->isValid();
+    }
+
+    /**
+     * 快速取得第一条错误消息
+     *
+     * @param array $data     待验证数据
+     * @param array $rules    验证规则
+     * @param array $messages 自定义错误消息
+     * @return string|null 全部通过时返回 null
+     */
+    public static function firstError(array $data, array $rules, array $messages = []): ?string
+    {
+        return self::getInstance()->validate($data, $rules, $messages)->first();
+    }
+
+    /**
      * 自定义共享验证器实例
      *
      * @param ValidatorInterface $validator
@@ -82,5 +98,13 @@ final class ValidationHelper
     public static function useInstance(ValidatorInterface $validator): void
     {
         self::$instance = $validator;
+    }
+
+    /**
+     * 重置共享验证器实例（主要用于单元测试）
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
     }
 }

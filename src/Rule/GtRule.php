@@ -11,6 +11,7 @@ namespace Kode\Validation\Rule;
  */
 class GtRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -33,6 +34,7 @@ class GtRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'gt';

@@ -12,6 +12,7 @@ namespace Kode\Validation\Rule;
  */
 class SizeRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -37,6 +38,7 @@ class SizeRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'size';

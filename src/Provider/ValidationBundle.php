@@ -23,10 +23,7 @@ class ValidationBundle
     public function register(object $app): void
     {
         if (method_exists($app, 'bind')) {
-            $app->bind(ValidatorInterface::class, function () {
-                $messages = require dirname(__DIR__, 2) . '/config/validation.php';
-                return new Validator($messages);
-            });
+            $app->bind(ValidatorInterface::class, static fn (): Validator => Validator::create());
         }
     }
 

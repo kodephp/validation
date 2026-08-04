@@ -11,6 +11,7 @@ namespace Kode\Validation\Rule;
  */
 class FloatRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -24,6 +25,7 @@ class FloatRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'float';

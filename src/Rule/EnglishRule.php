@@ -11,6 +11,7 @@ namespace Kode\Validation\Rule;
  */
 class EnglishRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -24,6 +25,7 @@ class EnglishRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'english';

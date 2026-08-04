@@ -12,6 +12,7 @@ namespace Kode\Validation\Rule;
  */
 class ChineseAlphaNumRule implements RuleInterface
 {
+    #[\Override]
     public function validate(string $field, mixed $value, array $params, array $data): ?string
     {
         if ($value === null || $value === '' || $value === []) {
@@ -25,6 +26,7 @@ class ChineseAlphaNumRule implements RuleInterface
         return null;
     }
 
+    #[\Override]
     public function getName(): string
     {
         return 'chinese_alpha_num';
