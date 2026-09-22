@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kode\Validation\Tests\Feature;
 
+use Kode\Validation\Helper\ValidationHelper;
 use Kode\Validation\Validator;
 use PHPUnit\Framework\TestCase;
 use Fiber;
@@ -266,5 +267,83 @@ class ContextSafetyTest extends TestCase
                 "协程 {$i} 自定义规则验证应通过"
             );
         }
+    }
+
+    /**
+     * 共享验证器实例在「真正交错」的协程下结果隔离。
+     *
+     * 上面的用例里 Fiber 从不让出，等价于顺序执行，证不了并发隔离；这里让自定义规则在
+     * 验证进行到一半时 suspend，两条验证确实同时在飞，才能检验实例上有没有请求级状态。
+     */
+    public function test共享实例在真实交错的协程下结果隔离(): void
+    {
+        $entered = [];
+        $validator = Validator::create();
+        $validator->addRule('yield', static function (string $field, mixed $value, array $params, array $data) use (&$entered): ?string {
+            $entered[] = $params[0] ?? '?';
+            // 把执行权交给另一条协程：此刻本次验证尚未结束，中间状态若挂在实例上就会串味
+            Fiber::suspend();
+
+            return null;
+        });
+
+        ValidationHelper::useInstance($validator);
+
+        try {
+            $passing = new Fiber(static fn () => ValidationHelper::check(
+                ['name' => '张三'],
+                ['name' => 'yield:a|required|min:2']
+            ));
+            $failing = new Fiber(static fn () => ValidationHelper::check(
+                ['name' => ''],
+                ['name' => 'yield:b|required']
+            ));
+
+            $passing->start();
+            $failing->start();
+
+            self::assertTrue($passing->isSuspended(), '前置条件：两条验证应同时在飞');
+            self::assertTrue($failing->isSuspended(), '前置条件：两条验证应同时在飞');
+            self::assertSame(['a', 'b'], $entered, '规则应交错入场，而非各自跑完');
+
+            // 故意先跑完「会失败」的那条：中间状态若跨调用共享，它的错误就会漏进后完成的验证里
+            $failing->resume();
+            $failResult = $failing->getReturn();
+
+            $passing->resume();
+            $passResult = $passing->getReturn();
+        } finally {
+            ValidationHelper::reset();
+        }
+
+        self::assertTrue($passResult->isValid(), '另一条协程的失败不应污染本次验证结果');
+        self::assertSame([], $passResult->errors());
+        self::assertFalse($failResult->isValid());
+        self::assertSame(['name'], array_keys($failResult->errors()));
+        self::assertCount(1, $failResult->errors()['name'], '只应收到自己那条 required 错误');
+    }
+
+    /**
+     * useInstance 换的是进程级静态实例，reset 负责复原。
+     *
+     * 常驻多进程 worker 里，一次 useInstance 会作用到之后该进程内的所有请求与协程，
+     * 因此它只适合启动期装配或单元测试；业务代码要按请求定制请用 Validator::create()。
+     */
+    public function testUseInstance为进程级全局且Reset复原默认实例(): void
+    {
+        $data = ['a' => '', 'b' => ''];
+        $rules = ['a' => 'required', 'b' => 'required'];
+
+        self::assertCount(2, ValidationHelper::check($data, $rules)->errors(), '默认实例应收集全部字段错误');
+
+        ValidationHelper::useInstance(Validator::create()->stopOnFirstFailure());
+
+        try {
+            self::assertCount(1, ValidationHelper::check($data, $rules)->errors(), '共享实例已被整体替换');
+        } finally {
+            ValidationHelper::reset();
+        }
+
+        self::assertCount(2, ValidationHelper::check($data, $rules)->errors(), 'reset 后应回到默认共享实例');
     }
 }

@@ -54,6 +54,76 @@ class EnhancementTest extends TestCase
         $this->assertSame(Validator::VERSION, $composer['version']);
     }
 
+    /**
+     * 声明的 kode 运行期依赖必须与 src/ 的实际引用一一对应。
+     *
+     * v1.9.0 曾声明 kode/context:^1.0 而 src/ 从未引用它：kode 生态的 context 已在 3.x，
+     * 宿主安装本包时会被迫把 context 降级到 1.x（或直接解析失败）。反向（引用了却未声明）
+     * 会让装出来的 vendor 缺类，所以两个方向一起锁。
+     */
+    public function testKode运行期依赖与源码引用一致(): void
+    {
+        $composer = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 2) . '/composer.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        $declared = [];
+        foreach ((array) ($composer['require'] ?? []) as $package => $constraint) {
+            if (str_starts_with((string) $package, 'kode/')) {
+                $normalized = self::normalizeNamespace(self::packageToRootNamespace((string) $package));
+                $declared[$normalized] = (string) $package;
+            }
+        }
+
+        $sources = '';
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(dirname(__DIR__, 2) . '/src', \FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($files as $file) {
+            if ($file instanceof \SplFileInfo && $file->isFile() && $file->getExtension() === 'php') {
+                $sources .= (string) file_get_contents($file->getPathname());
+            }
+        }
+
+        preg_match_all('/\bKode\\\\([A-Z][A-Za-z0-9]*)/', $sources, $matches);
+
+        $used = [];
+        foreach (array_unique($matches[1]) as $root) {
+            if ($root === 'Validation') {
+                continue;
+            }
+
+            $used[] = self::normalizeNamespace('Kode\\' . $root);
+        }
+
+        $declaredKeys = array_keys($declared);
+        $usedKeys = array_unique($used);
+
+        sort($declaredKeys);
+        sort($usedKeys);
+
+        // 集合相等同时锁住两个方向，空集时也算一次断言（否则测试会退化成永真）
+        $this->assertSame(
+            $declaredKeys,
+            $usedKeys,
+            'composer.json 的 kode/* 运行期依赖必须与 src/ 实际引用的顶层 Kode 命名空间一致：'
+            . '多声明会迫使宿主降级该包才能装本包，少声明会装出缺类的 vendor'
+        );
+    }
+
+    private static function packageToRootNamespace(string $package): string
+    {
+        return 'Kode\\' . str_replace(' ', '', ucwords(str_replace('-', ' ', substr($package, strlen('kode/')))));
+    }
+
+    private static function normalizeNamespace(string $namespace): string
+    {
+        return strtolower(str_replace(['\\', '-', ' '], '', $namespace));
+    }
+
     // ==================== bail 短路 ====================
 
     public function testBail规则在首个错误后停止(): void

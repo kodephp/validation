@@ -93,6 +93,10 @@ final class ValidationHelper
     /**
      * 自定义共享验证器实例
      *
+     * 换的是进程级静态实例：常驻多进程 worker 下，一次调用会作用到之后该进程内的
+     * 所有请求与协程，所以只适合启动期装配或单元测试。要按请求定制（临时规则、
+     * stopOnFirstFailure、字段别名等）请各自 Validator::create()，别走这里。
+     *
      * @param ValidatorInterface $validator
      */
     public static function useInstance(ValidatorInterface $validator): void
@@ -102,6 +106,9 @@ final class ValidationHelper
 
     /**
      * 重置共享验证器实例（主要用于单元测试）
+     *
+     * 与 useInstance() 成对使用：把全局实例换回去，用完必须还回来，
+     * 否则后续执行单元会静默沿用这份定制配置。
      */
     public static function reset(): void
     {

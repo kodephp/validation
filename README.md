@@ -16,6 +16,10 @@
 ## 环境要求
 
 - PHP >= 8.3
+- **零运行期依赖**：只用 PHP 标准库。协程安全靠「验证中间状态一律走局部变量」实现，
+  不需要 `kode/context`；v1.9.0 曾声明 `kode/context: ^1.0`（src/ 从未引用），
+  结果宿主装本包时会被迫把 context 降到 1.x、与 kode 生态的 3.x 直接冲突，v1.9.1 起移除。
+  新增依赖请同步保证「声明即使用」，`EnhancementTest::testKode运行期依赖与源码引用一致` 会拦住两个方向的漂移。
 
 ## 安装
 
@@ -659,6 +663,10 @@ $ok     = ValidationHelper::passes($data, $rules);   // bool
 $msg    = ValidationHelper::firstError($data, $rules); // ?string 首错
 ValidationHelper::reset();                            // 重置内部共享实例
 ```
+
+> `ValidationHelper::useInstance()` 换的是**进程级静态实例**：常驻多进程 worker 下，一次调用
+> 会作用到之后该进程内的所有请求与协程。只用于启动期装配或单元测试，且必须与 `reset()` 成对；
+> 要按请求定制规则/`stopOnFirstFailure`/字段别名，请各自 `Validator::create()`。
 
 ### 方式三：Validator 直接使用
 

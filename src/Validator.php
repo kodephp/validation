@@ -35,7 +35,7 @@ class Validator implements ValidatorInterface
     /**
      * 当前验证库版本号（语义化版本）
      */
-    public const string VERSION = '1.9.0';
+    public const string VERSION = '1.9.1';
 
     /**
      * 内置规则映射：规则名 => 规则类名（惰性实例化）
