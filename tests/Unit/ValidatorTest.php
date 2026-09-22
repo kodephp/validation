@@ -1892,8 +1892,16 @@ class ValidatorTest extends TestCase
 
     public function testVERSION常量存在(): void
     {
+        $manifest = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../composer.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
         $this->assertTrue(defined(Validator::class . '::VERSION'));
-        $this->assertSame('1.9.0', Validator::VERSION);
+        // 与 composer.json 对齐而不是钉死字面量：钉死会让发版时「改常量就红」，等于反向锁死漂移
+        $this->assertSame($manifest['version'], Validator::VERSION);
     }
 
     // ==================== 精确长度规则 ====================

@@ -27,9 +27,16 @@ class EnhancementTest extends TestCase
 
     // ==================== 版本与基线 ====================
 
-    public function test版本号为1_9_0(): void
+    public function test版本号与composer清单一致(): void
     {
-        $this->assertSame('1.9.0', Validator::VERSION);
+        $manifest = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../composer.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        $this->assertSame($manifest['version'], Validator::VERSION);
     }
 
     public function testPHP版本基线为8_3(): void
@@ -44,7 +51,7 @@ class EnhancementTest extends TestCase
         );
 
         $this->assertSame('>=8.3', $composer['require']['php']);
-        $this->assertSame('1.9.0', $composer['version']);
+        $this->assertSame(Validator::VERSION, $composer['version']);
     }
 
     // ==================== bail 短路 ====================
