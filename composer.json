@@ -2,7 +2,7 @@
     "name": "kode/validation",
     "description": "协程安全的数据验证库 for kode framework",
     "type": "library",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "license": "MIT",
     "keywords": [
         "kode",
@@ -10,7 +10,7 @@
         "validator",
         "coroutine",
         "fiber",
-        "php83"
+        "php84"
     ],
     "authors": [
         {
