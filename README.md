@@ -1,6 +1,6 @@
 # kode/validation
 
-协程安全的 PHP 数据验证库，支持 PHP 8.3+（类型化类常量、`#[\Override]`、`json_validate()`）。
+协程安全的 PHP 数据验证库，支持 PHP 8.4+（类型化类常量、`#[\Override]`、`json_validate()`）。
 
 ## 特性
 
@@ -15,7 +15,7 @@
 
 ## 环境要求
 
-- PHP >= 8.3
+- PHP >= 8.4
 - **零运行期依赖**：只用 PHP 标准库。协程安全靠「验证中间状态一律走局部变量」实现，
   不需要 `kode/context`；v1.9.0 曾声明 `kode/context: ^1.0`（src/ 从未引用），
   结果宿主装本包时会被迫把 context 降到 1.x、与 kode 生态的 3.x 直接冲突，v1.9.1 起移除。

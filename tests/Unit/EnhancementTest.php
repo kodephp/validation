@@ -39,9 +39,9 @@ class EnhancementTest extends TestCase
         $this->assertSame($manifest['version'], Validator::VERSION);
     }
 
-    public function testPHP版本基线为8_3(): void
+    public function testPHP版本基线为8_4(): void
     {
-        $this->assertGreaterThanOrEqual(80300, PHP_VERSION_ID);
+        $this->assertGreaterThanOrEqual(80400, PHP_VERSION_ID);
 
         $composer = json_decode(
             (string) file_get_contents(dirname(__DIR__, 2) . '/composer.json'),
@@ -50,7 +50,7 @@ class EnhancementTest extends TestCase
             JSON_THROW_ON_ERROR
         );
 
-        $this->assertSame('>=8.3', $composer['require']['php']);
+        $this->assertSame('^8.4', $composer['require']['php']);
         $this->assertSame(Validator::VERSION, $composer['version']);
     }
 
